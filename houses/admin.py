@@ -1,14 +1,13 @@
 from django.contrib import admin
-from .models import House, Booking
+from .models import House
 
-class BookingAdmin(admin.ModelAdmin):
-    list_display = ('get_house_name', 'customer_name', 'start_date', 'end_date')  # Adjusted fields
+# Customize how the houses are displayed in the admin panel
+class HouseAdmin(admin.ModelAdmin):
+    # Display the house name, address, and price in the list view
+    list_display = ('name', 'address', 'price')
 
-    def get_house_name(self, obj):
-        return obj.house.name  # Get the house name from the related House model
+    # Add a search bar that allows searching by house name and address
+    search_fields = ('name', 'address')
 
-    get_house_name.admin_order_field = 'house'  # Allows sorting by house
-    get_house_name.short_description = 'House Name'  # Short label for the admin interface
-
-admin.site.register(House)
-admin.site.register(Booking, BookingAdmin)
+# Register the House model with the custom admin options
+admin.site.register(House, HouseAdmin)
