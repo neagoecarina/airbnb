@@ -3,23 +3,25 @@
 {% block title %}{{ myhouse.name }} Details{% endblock %}
 
 {% block content %}
-  <h1>{{ myhouse.name }} - {{ myhouse.address }}</h1>
-  <p>Price per night: ${{ myhouse.price }}</p>
+  <h2>{{ myhouse.name }} - {{ myhouse.address }}</h2>
+  <p><strong>Price per night:</strong> ${{ myhouse.price }}</p>
 
   <!-- FullCalendar container with specific size -->
   <div id="calendar" style="max-width: 800px; margin: 0 auto;"></div>
 
   <!-- Form for start and end date (will be updated dynamically) -->
-  <p>Start Date: <span id="start-date"></span></p>
-  <p>End Date: <span id="end-date"></span></p>
-  <p>Total Price: $<span id="total-price">0.00</span></p>
+  <p><strong>Start Date:</strong> <span id="start-date"></span></p>
+  <p><strong>End Date:</strong> <span id="end-date"></span></p>
+  <p><strong>Total Price:</strong> $<span id="total-price">0.00</span></p>
 
   <!-- Submit booking button -->
   <form method="POST" id="booking-form">
     {% csrf_token %}
     <input type="hidden" name="start_date" id="start_date" value="">
     <input type="hidden" name="end_date" id="end_date" value="">
-    <button type="submit">Book this house</button>
+    <button type="submit" style="background-color: #ff5a5f; color: white; padding: 10px 20px; border: none; cursor: pointer;">
+      Book this house
+    </button>
   </form>
 
   <p>Back to <a href="/houses/">Houses</a></p>
@@ -70,4 +72,3 @@
     });
   </script>
 {% endblock %}
-

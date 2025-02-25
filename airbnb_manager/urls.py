@@ -14,12 +14,16 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.urls import path, include
+# airbnb_manager/urls.py
+# airbnb_manager/urls.py
+
 from django.contrib import admin
-from houses import views
+from django.urls import path
+from houses import views  # Make sure to import the views from the 'houses' app
 
 urlpatterns = [
-    path('', views.main, name='main'),  # Main page URL
-    path('houses/', include('houses.urls')),  # Include house-related URLs
     path('admin/', admin.site.urls),
+    path('', views.houses, name='home'),  # The homepage for all houses
+    path('houses/', views.houses, name='houses_list'),  # List of houses
+    path('houses/<int:house_id>/', views.house_detail, name='details'),  # House details page
 ]
