@@ -1,0 +1,26 @@
+{% extends "master.html" %}
+
+{% block title %}
+  My Houses
+{% endblock %}
+
+{% block content %}
+  <h1>My Houses</h1>
+
+  <h3>Available Houses</h3>
+
+  <p>Check out all our available houses:</p>
+
+  <ul>
+    {% for house in myhouses %}
+      <li>
+        <a href="{% url 'details' house.id %}">
+          {{ house.name }} - {{ house.address }} - ${{ house.price }}
+        </a>
+      </li>
+    {% empty %}
+      <li>No houses available.</li>
+    {% endfor %}
+  </ul>
+
+{% endblock %}

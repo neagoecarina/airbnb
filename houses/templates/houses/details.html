@@ -1,0 +1,73 @@
+{% extends 'master.html' %}
+
+{% block title %}{{ myhouse.name }} Details{% endblock %}
+
+{% block content %}
+  <h1>{{ myhouse.name }} - {{ myhouse.address }}</h1>
+  <p>Price per night: ${{ myhouse.price }}</p>
+
+  <!-- FullCalendar container with specific size -->
+  <div id="calendar" style="max-width: 800px; margin: 0 auto;"></div>
+
+  <!-- Form for start and end date (will be updated dynamically) -->
+  <p>Start Date: <span id="start-date"></span></p>
+  <p>End Date: <span id="end-date"></span></p>
+  <p>Total Price: $<span id="total-price">0.00</span></p>
+
+  <!-- Submit booking button -->
+  <form method="POST" id="booking-form">
+    {% csrf_token %}
+    <input type="hidden" name="start_date" id="start_date" value="">
+    <input type="hidden" name="end_date" id="end_date" value="">
+    <button type="submit">Book this house</button>
+  </form>
+
+  <p>Back to <a href="/houses/">Houses</a></p>
+{% endblock %}
+
+{% block scripts %}
+  <!-- jQuery 2.x (required for FullCalendar 3.x) -->
+  <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+
+  <!-- Moment.js (required for FullCalendar) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+
+  <!-- FullCalendar CSS (to style the calendar) -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/fullcalendar.min.css" rel="stylesheet">
+
+  <!-- FullCalendar 3.x JavaScript -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/fullcalendar.min.js"></script>
+
+  <script>
+    $(document).ready(function() {
+      let pricePerNight = {{ myhouse.price }};  // Price per night for the selected house
+      let startDate, endDate;
+
+      // Initialize FullCalendar with date selection enabled
+      $('#calendar').fullCalendar({
+        initialView: 'dayGridMonth',
+        selectable: true,
+        select: function(start, end) {
+          // Highlight the selected dates
+          startDate = start;
+          endDate = end;
+
+          // Update the calendar with selected date range
+          $('#start-date').text(start.format('YYYY-MM-DD'));
+          $('#end-date').text(end.format('YYYY-MM-DD'));
+
+          // Set the hidden input values for form submission
+          $('#start_date').val(start.format('YYYY-MM-DD'));
+          $('#end_date').val(end.format('YYYY-MM-DD'));
+
+          // Calculate the total price
+          let numberOfDays = end.diff(start, 'days');
+          let totalPrice = numberOfDays * pricePerNight;
+          $('#total-price').text(totalPrice.toFixed(2)); // Show the calculated total price
+        },
+        unselectAuto: false  // Prevent deselection after a date range is selected
+      });
+    });
+  </script>
+{% endblock %}
+

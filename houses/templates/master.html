@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Airbnb Manager</title>
+</head>
+<body>
+
+  <header>
+    <h1>Welcome to Airbnb Manager</h1>
+    <nav>
+      <a href="/houses/">All Houses</a>
+      <a href="/admin/">Admin</a>
+    </nav>
+  </header>
+
+  <main>
+    {% block content %}
+    {% endblock %}
+  </main>
+
+  <footer>
+    <p>&copy; 2025 Airbnb Manager</p>
+  </footer>
+
+  <!-- FullCalendar JS and CSS included in the scripts block -->
+  {% block scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@3.9.0/dist/fullcalendar.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@3.9.0/dist/fullcalendar.min.css" rel="stylesheet" />
+  {% endblock %}
+  
+</body>
+</html>
