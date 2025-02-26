@@ -58,11 +58,11 @@
     selectHelper: true,
     unselectAuto: false,
     dayRender: function(date, cell) {
-      let formattedDate = date.format('YYYY-MM-DD');
-      if (bookedDates.includes(formattedDate)) {
-        cell.css('background-color', '#FFC0CB');
-      }
-    },
+    let formattedDate = date.format('YYYY-MM-DD');
+    if (bookedDates.includes(formattedDate)) {
+        cell.css('background-color', '#FFC0CB'); // Baby pink for booked dates
+    }
+},
     select: function(start, end) {
       if (selectedDate && endDate) {
         selectedDate = null;
@@ -115,37 +115,49 @@
   });
 
   $('#booking-form').on('submit', function(event) {
-    event.preventDefault(); // Prevent the form from submitting
+    event.preventDefault();  // Prevent default form submission
 
-    let customerName = $('#customer_name_input').val();  // Get the customer name value
+    let customerName = $('#customer_name_input').val();
+    let startDate = $('#start_date_input').val();
+    let endDate = $('#end_date_input').val();
 
-    // Make sure customer name is not empty
-    if (!customerName) {
-      alert('Please enter the customer name.');
-      return;
+    if (!customerName || !startDate || !endDate) {
+        alert('Please enter all required details.');
+        return;
     }
 
     $.ajax({
-      type: 'POST',
-      url: window.location.href,
-      data: {
-        start_date: $('#start_date_input').val(),
-        end_date: $('#end_date_input').val(),
-        customer_name: customerName,
-        csrfmiddlewaretoken: '{{ csrf_token }}'
-      },
-      success: function(response) {
-        if (response.success) {
-          alert(response.message);
-          $('#customer_name_input').val('');
-          location.reload(); // Refresh the page after successful booking
-        
-        } else {
-          alert(response.message);
+        type: 'POST',
+        url: window.location.href,
+        data: {
+            start_date: startDate,
+            end_date: endDate,
+            customer_name: customerName,
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        },
+        success: function(response) {
+            console.log('AJAX Response:', response);  // Log response in console
+            
+            if (response.success) {
+                alert(response.message);  // Show success message
+                $('#customer_name_input').val('');  // Clear the customer name field
+                
+                // Show success modal
+                $('#bookingSuccessModal').fadeIn();
+
+                setTimeout(function() {
+                    location.reload();  // Refresh page after a slight delay
+                }, 500);
+            } else {
+                alert(response.message);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('AJAX Error:', status, error);
+            alert('Something went wrong. Please try again.');
         }
-      }
     });
-  });
+});
 });
 
   </script>
