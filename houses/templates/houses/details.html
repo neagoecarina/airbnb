@@ -6,20 +6,20 @@
   <h2>{{ myhouse.name }} - {{ myhouse.address }}</h2>
   <p><strong>Price per night:</strong> ${{ myhouse.price }}</p>
 
-  <!-- FullCalendar container with specific size -->
+  <!-- FullCalendar container -->
   <div id="calendar" style="max-width: 800px; margin: 0 auto;"></div>
 
-  <!-- Form for start and end date (will be updated dynamically) -->
-  <p><strong>Start Date:</strong> <span id="start-date"></span></p>
-  <p><strong>End Date:</strong> <span id="end-date"></span></p>
+  <!-- Display selected dates and price -->
+  <p><strong>Start Date:</strong> <span id="start-date">-</span></p>
+  <p><strong>End Date:</strong> <span id="end-date">-</span></p>
   <p><strong>Total Price:</strong> $<span id="total-price">0.00</span></p>
 
-  <!-- Submit booking button -->
+  <!-- Booking Form -->
   <form method="POST" id="booking-form">
     {% csrf_token %}
-    <input type="hidden" name="start_date" id="start_date" value="">
-    <input type="hidden" name="end_date" id="end_date" value="">
-    <button type="submit" style="background-color: #ff5a5f; color: white; padding: 10px 20px; border: none; cursor: pointer;">
+    <input type="hidden" name="start_date" id="start_date_input">
+    <input type="hidden" name="end_date" id="end_date_input">
+    <button type="submit" id="book-button" style="background-color: #ff5a5f; color: white; padding: 10px 20px; border: none; cursor: pointer;">
       Book this house
     </button>
   </form>
@@ -28,46 +28,89 @@
 {% endblock %}
 
 {% block scripts %}
-  <!-- jQuery 2.x (required for FullCalendar 3.x) -->
-  <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-
-  <!-- Moment.js (required for FullCalendar) -->
+  <!-- jQuery and FullCalendar dependencies -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
-
-  <!-- FullCalendar CSS (to style the calendar) -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/fullcalendar.min.css" rel="stylesheet">
-
-  <!-- FullCalendar 3.x JavaScript -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/fullcalendar.min.js"></script>
 
   <script>
     $(document).ready(function() {
-      let pricePerNight = {{ myhouse.price }};  // Price per night for the selected house
-      let startDate, endDate;
+      let pricePerNight = {{ myhouse.price }};
+      let selectedDate = null; // This will hold the start date
+      let endDate = null; // This will hold the end date
 
-      // Initialize FullCalendar with date selection enabled
+      // Dates already booked for this house
+      let bookedDates = {{ booked_dates|safe }};
+
+      // Initialize FullCalendar
       $('#calendar').fullCalendar({
-        initialView: 'dayGridMonth',
         selectable: true,
-        select: function(start, end) {
-          // Highlight the selected dates
-          startDate = start;
-          endDate = end;
-
-          // Update the calendar with selected date range
-          $('#start-date').text(start.format('YYYY-MM-DD'));
-          $('#end-date').text(end.format('YYYY-MM-DD'));
-
-          // Set the hidden input values for form submission
-          $('#start_date').val(start.format('YYYY-MM-DD'));
-          $('#end_date').val(end.format('YYYY-MM-DD'));
-
-          // Calculate the total price
-          let numberOfDays = end.diff(start, 'days');
-          let totalPrice = numberOfDays * pricePerNight;
-          $('#total-price').text(totalPrice.toFixed(2)); // Show the calculated total price
+        selectHelper: true,
+        unselectAuto: false,
+        dayRender: function(date, cell) {
+          let formattedDate = date.format('YYYY-MM-DD');
+          // If the date is booked, highlight it in baby pink
+          if (bookedDates.includes(formattedDate)) {
+            cell.css('background-color', '#FFC0CB'); // Baby pink for booked dates
+          }
         },
-        unselectAuto: false  // Prevent deselection after a date range is selected
+        select: function(start, end) {
+          // If both selectedDate and endDate are already set, reset them
+          if (selectedDate && endDate) {
+            selectedDate = null;
+            endDate = null;
+            $('#calendar').fullCalendar('removeEvents'); // Remove previous selections
+            $('#start-date').text('-');
+            $('#end-date').text('-');
+            $('#total-price').text('0.00');
+          }
+
+          // First click: Set the selected date
+          if (!selectedDate) {
+            selectedDate = start;
+            $('#start-date').text(selectedDate.format('YYYY-MM-DD'));
+            $('#start_date_input').val(selectedDate.format('YYYY-MM-DD'));
+          } else {
+            // Second click: Compare with the selected date
+            if (start.isBefore(selectedDate)) {
+              // If the new click is earlier than the selected date, it becomes the new start date
+              selectedDate = start;
+              $('#start-date').text(selectedDate.format('YYYY-MM-DD'));
+              $('#start_date_input').val(selectedDate.format('YYYY-MM-DD'));
+              $('#end-date').text('-');
+              $('#end_date_input').val('');
+              endDate = null; // Reset end date
+            } else {
+              // Otherwise, it becomes the end date
+              endDate = start;
+              $('#end-date').text(endDate.format('YYYY-MM-DD'));
+              $('#end_date_input').val(endDate.format('YYYY-MM-DD'));
+            }
+          }
+
+          // Highlight the selected range
+          let events = [];
+          let highlightDate = selectedDate.clone();
+          while (highlightDate.isBefore(endDate) || highlightDate.isSame(endDate)) {
+            events.push({
+              id: 'selection',
+              start: highlightDate.format('YYYY-MM-DD'),
+              end: highlightDate.format('YYYY-MM-DD'),
+              rendering: 'background',
+              backgroundColor: '#ADD8E6' // Baby blue for selected range
+            });
+            highlightDate.add(1, 'days');
+          }
+          $('#calendar').fullCalendar('removeEvents', 'selection'); // Remove previous selection
+          $('#calendar').fullCalendar('addEventSource', events);
+
+          // Calculate the total price based on the number of days
+          if (endDate) {
+            let numberOfDays = endDate.diff(selectedDate, 'days'); // Correct number of days
+            $('#total-price').text((numberOfDays * pricePerNight).toFixed(2));
+          }
+        }
       });
     });
   </script>
