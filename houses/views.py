@@ -13,17 +13,29 @@ def house_detail(request, house_id):
     myhouse = get_object_or_404(House, id=house_id)
 
     if request.method == "POST":
-        start_date = request.POST.get('start_date')
-        end_date = request.POST.get('end_date')
+        start_date_str = request.POST.get('start_date')
+        end_date_str = request.POST.get('end_date')
 
-        if start_date and end_date:
-            Booking.objects.create(
-                house=myhouse,
-                customer_name="Anonymous",
-                start_date=start_date,
-                end_date=end_date
-            )
-            return JsonResponse({"success": True})
+        # Convert the string dates to datetime objects
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+        # Check for overlapping bookings
+        bookings = Booking.objects.filter(house=myhouse)
+        for booking in bookings:
+            # Check if the new booking's date range overlaps with an existing booking
+            if not (end_date < booking.start_date or start_date > booking.end_date):
+                return JsonResponse({"success": False, "message": "The selected dates are already booked."})
+
+        # If no overlap, create the booking
+        Booking.objects.create(
+            house=myhouse,
+            customer_name="Anonymous",
+            start_date=start_date,
+            end_date=end_date
+        )
+
+        return JsonResponse({"success": True, "message": "Booking successful."})
 
     # Get all booked dates for this house
     booked_ranges = Booking.objects.filter(house=myhouse)

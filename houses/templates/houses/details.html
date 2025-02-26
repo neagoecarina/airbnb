@@ -24,94 +24,112 @@
     </button>
   </form>
 
+  <!-- Booking Success Modal -->
+  <div id="bookingSuccessModal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #28a745; padding: 20px; color: white; border-radius: 5px;">
+    <h4>Booking Successful!</h4>
+    <p>Your booking has been successfully placed. The page will refresh shortly.</p>
+  </div>
+
   <p>Back to <a href="/houses/">Houses</a></p>
 {% endblock %}
 
 {% block scripts %}
-  <!-- jQuery and FullCalendar dependencies -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/fullcalendar.min.css" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/fullcalendar.min.js"></script>
 
   <script>
-    $(document).ready(function() {
-      let pricePerNight = {{ myhouse.price }};
-      let selectedDate = null; // This will hold the start date
-      let endDate = null; // This will hold the end date
+ $(document).ready(function() {
+  let pricePerNight = {{ myhouse.price }};
+  let selectedDate = null;
+  let endDate = null;
 
-      // Dates already booked for this house
-      let bookedDates = {{ booked_dates|safe }};
+  let bookedDates = {{ booked_dates|safe }};
 
-      // Initialize FullCalendar
-      $('#calendar').fullCalendar({
-        selectable: true,
-        selectHelper: true,
-        unselectAuto: false,
-        dayRender: function(date, cell) {
-          let formattedDate = date.format('YYYY-MM-DD');
-          // If the date is booked, highlight it in baby pink
-          if (bookedDates.includes(formattedDate)) {
-            cell.css('background-color', '#FFC0CB'); // Baby pink for booked dates
-          }
-        },
-        select: function(start, end) {
-          // If both selectedDate and endDate are already set, reset them
-          if (selectedDate && endDate) {
-            selectedDate = null;
-            endDate = null;
-            $('#calendar').fullCalendar('removeEvents'); // Remove previous selections
-            $('#start-date').text('-');
-            $('#end-date').text('-');
-            $('#total-price').text('0.00');
-          }
+  $('#calendar').fullCalendar({
+    selectable: true,
+    selectHelper: true,
+    unselectAuto: false,
+    dayRender: function(date, cell) {
+      let formattedDate = date.format('YYYY-MM-DD');
+      if (bookedDates.includes(formattedDate)) {
+        cell.css('background-color', '#FFC0CB');
+      }
+    },
+    select: function(start, end) {
+      if (selectedDate && endDate) {
+        selectedDate = null;
+        endDate = null;
+        $('#calendar').fullCalendar('removeEvents');
+        $('#start-date').text('-');
+        $('#end-date').text('-');
+        $('#total-price').text('0.00');
+      }
 
-          // First click: Set the selected date
-          if (!selectedDate) {
-            selectedDate = start;
-            $('#start-date').text(selectedDate.format('YYYY-MM-DD'));
-            $('#start_date_input').val(selectedDate.format('YYYY-MM-DD'));
-          } else {
-            // Second click: Compare with the selected date
-            if (start.isBefore(selectedDate)) {
-              // If the new click is earlier than the selected date, it becomes the new start date
-              selectedDate = start;
-              $('#start-date').text(selectedDate.format('YYYY-MM-DD'));
-              $('#start_date_input').val(selectedDate.format('YYYY-MM-DD'));
-              $('#end-date').text('-');
-              $('#end_date_input').val('');
-              endDate = null; // Reset end date
-            } else {
-              // Otherwise, it becomes the end date
-              endDate = start;
-              $('#end-date').text(endDate.format('YYYY-MM-DD'));
-              $('#end_date_input').val(endDate.format('YYYY-MM-DD'));
-            }
-          }
-
-          // Highlight the selected range
-          let events = [];
-          let highlightDate = selectedDate.clone();
-          while (highlightDate.isBefore(endDate) || highlightDate.isSame(endDate)) {
-            events.push({
-              id: 'selection',
-              start: highlightDate.format('YYYY-MM-DD'),
-              end: highlightDate.format('YYYY-MM-DD'),
-              rendering: 'background',
-              backgroundColor: '#ADD8E6' // Baby blue for selected range
-            });
-            highlightDate.add(1, 'days');
-          }
-          $('#calendar').fullCalendar('removeEvents', 'selection'); // Remove previous selection
-          $('#calendar').fullCalendar('addEventSource', events);
-
-          // Calculate the total price based on the number of days
-          if (endDate) {
-            let numberOfDays = endDate.diff(selectedDate, 'days'); // Correct number of days
-            $('#total-price').text((numberOfDays * pricePerNight).toFixed(2));
-          }
+      if (!selectedDate) {
+        selectedDate = start;
+        $('#start-date').text(selectedDate.format('YYYY-MM-DD'));
+        $('#start_date_input').val(selectedDate.format('YYYY-MM-DD'));
+      } else {
+        if (start.isBefore(selectedDate)) {
+          selectedDate = start;
+          $('#start-date').text(selectedDate.format('YYYY-MM-DD'));
+          $('#start_date_input').val(selectedDate.format('YYYY-MM-DD'));
+          $('#end-date').text('-');
+          $('#end_date_input').val('');
+          endDate = null;
+        } else {
+          endDate = start;
+          $('#end-date').text(endDate.format('YYYY-MM-DD'));
+          $('#end_date_input').val(endDate.format('YYYY-MM-DD'));
         }
-      });
+      }
+
+      let events = [];
+      let highlightDate = selectedDate.clone();
+      while (highlightDate.isBefore(endDate) || highlightDate.isSame(endDate)) {
+        events.push({
+          id: 'selection',
+          start: highlightDate.format('YYYY-MM-DD'),
+          end: highlightDate.format('YYYY-MM-DD'),
+          rendering: 'background',
+          backgroundColor: '#ADD8E6'
+        });
+        highlightDate.add(1, 'days');
+      }
+      $('#calendar').fullCalendar('removeEvents', 'selection');
+      $('#calendar').fullCalendar('addEventSource', events);
+
+      if (endDate) {
+        let numberOfDays = endDate.diff(selectedDate, 'days');
+        $('#total-price').text((numberOfDays * pricePerNight).toFixed(2));
+      }
+    }
+  });
+
+  $('#booking-form').on('submit', function(event) {
+    event.preventDefault(); // Prevent the form from submitting
+
+    $.ajax({
+      type: 'POST',
+      url: window.location.href,
+      data: {
+        start_date: $('#start_date_input').val(),
+        end_date: $('#end_date_input').val(),
+        csrfmiddlewaretoken: '{{ csrf_token }}'
+      },
+      success: function(response) {
+        if (response.success) {
+          alert(response.message);
+          location.reload(); // Refresh the page after successful booking
+        } else {
+          alert(response.message);
+        }
+      }
     });
+  });
+});
+
   </script>
 {% endblock %}
