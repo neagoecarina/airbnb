@@ -19,6 +19,12 @@
     {% csrf_token %}
     <input type="hidden" name="start_date" id="start_date_input">
     <input type="hidden" name="end_date" id="end_date_input">
+
+      <!-- Input field for the customer name -->
+   <label for="customer_name">Customer Name:</label>
+   <input type="text" name="customer_name" id="customer_name_input" placeholder="Enter customer name">
+ 
+
     <button type="submit" id="book-button" style="background-color: #ff5a5f; color: white; padding: 10px 20px; border: none; cursor: pointer;">
       Book this house
     </button>
@@ -111,18 +117,29 @@
   $('#booking-form').on('submit', function(event) {
     event.preventDefault(); // Prevent the form from submitting
 
+    let customerName = $('#customer_name_input').val();  // Get the customer name value
+
+    // Make sure customer name is not empty
+    if (!customerName) {
+      alert('Please enter the customer name.');
+      return;
+    }
+
     $.ajax({
       type: 'POST',
       url: window.location.href,
       data: {
         start_date: $('#start_date_input').val(),
         end_date: $('#end_date_input').val(),
+        customer_name: customerName,
         csrfmiddlewaretoken: '{{ csrf_token }}'
       },
       success: function(response) {
         if (response.success) {
           alert(response.message);
+          $('#customer_name_input').val('');
           location.reload(); // Refresh the page after successful booking
+        
         } else {
           alert(response.message);
         }

@@ -15,6 +15,7 @@ def house_detail(request, house_id):
     if request.method == "POST":
         start_date_str = request.POST.get('start_date')
         end_date_str = request.POST.get('end_date')
+        customer_name = request.POST.get('customer_name', 'Anonymous')  # Default to 'Anonymous' if not provided
 
         # Convert the string dates to datetime objects
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
@@ -30,7 +31,7 @@ def house_detail(request, house_id):
         # If no overlap, create the booking
         Booking.objects.create(
             house=myhouse,
-            customer_name="Anonymous",
+            customer_name=customer_name,
             start_date=start_date,
             end_date=end_date
         )

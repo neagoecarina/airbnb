@@ -15,8 +15,8 @@ class BookingAdmin(admin.ModelAdmin):
     # Display the house name, address, and price in the list view
     list_display = ('house', 'start_date','end_date' ,'customer_name')
 
-    # Add a search bar that allows searching by house name and address
-    search_fields = ['house', 'customer_name']
+  # Add a search bar that allows searching by house name, address, and customer name
+    search_fields = ['house__name', 'house__address', 'customer_name']  # Use double underscore to access related model fields
 
 
 # Register the House model with the custom admin options
