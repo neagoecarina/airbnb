@@ -108,7 +108,7 @@
       $('#calendar').fullCalendar('addEventSource', events);
 
       if (endDate) {
-        let numberOfDays = endDate.diff(selectedDate, 'days');
+        let numberOfDays = endDate.diff(selectedDate, 'days') + 1;
         $('#total-price').text((numberOfDays * pricePerNight).toFixed(2));
       }
     }

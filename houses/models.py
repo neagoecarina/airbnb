@@ -27,7 +27,7 @@ class Booking(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         # Calculate total days of the booking
-        total_days = (self.end_date - self.start_date).days
+        total_days = (self.end_date - self.start_date).days+1
         # Get the price per night from the associated house
         price_per_night = self.house.price
 
