@@ -63,3 +63,15 @@ class Earning(models.Model):
         # Check if earnings for this month already exist
         earnings, created = Earning.objects.get_or_create(month_name=month_name)
         return earnings
+    
+class UtilityExpense(models.Model):
+    house = models.ForeignKey(House, on_delete=models.CASCADE)
+    year = models.IntegerField(default=datetime.now().year)  # Default to current year
+    month = models.IntegerField(default=datetime.now().month)  # Default to current month
+    water_expense = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    electricity_expense = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_expense = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    def save(self, *args, **kwargs):
+        self.total_expense = self.water_expense + self.electricity_expense
+        super().save(*args, **kwargs)

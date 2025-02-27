@@ -26,4 +26,5 @@ urlpatterns = [
     path('', views.houses, name='home'),  # The homepage for all houses
     path('houses/', views.houses, name='houses_list'),  # List of houses
     path('houses/<int:house_id>/', views.house_detail, name='details'),  # House details page
+    path('utility-expenses/', views.add_utility_expenses, name='utility_expenses'),
 ]

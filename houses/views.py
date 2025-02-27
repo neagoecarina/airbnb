@@ -1,9 +1,12 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
-from .models import House, Booking
+from .models import House, Booking, UtilityExpense
 from datetime import datetime, timedelta
 import json
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib import messages
+import re
+from decimal import Decimal
 
 # View to list all houses
 def houses(request):
@@ -56,3 +59,85 @@ def house_detail(request, house_id):
 
     # Pass booked_dates as a JSON-safe list to the template
     return render(request, 'houses/details.html', {'myhouse': myhouse, 'booked_dates': json.dumps(booked_dates)})
+
+
+
+# Define a function to check if the input is a valid decimal
+def isValidDecimal(value):
+    decimalPattern = r'^\d+(\.\d{1,2})?$'  # Pattern for valid decimal (up to two decimal places)
+    return bool(re.match(decimalPattern, value))
+
+
+def add_utility_expenses(request):
+    houses = House.objects.all()
+    months = range(1, 13)
+    years = range(2023, 2034)
+    selected_house = request.POST.get('house') if request.method == "POST" else None
+    selected_month = request.POST.get('month') if request.method == "POST" else None
+    selected_year = request.POST.get('year') if request.method == "POST" else None
+
+    if request.method == "POST":
+        house_id = request.POST.get('house')
+        month = request.POST.get('month')
+        year = request.POST.get('year')
+        water_expense = request.POST.get('water')
+        electricity_expense = request.POST.get('electricity')
+
+        # Print values for debugging purposes
+        print(f"House ID: {house_id}, Month: {month}, Year: {year}, Water Expense: {water_expense}, Electricity Expense: {electricity_expense}")
+
+        # Set water and electricity to 0 if they are empty
+        if not water_expense:
+            water_expense = '0'
+        if not electricity_expense:
+            electricity_expense = '0'
+
+        # Validate the decimal input fields
+        if not (isValidDecimal(water_expense) or isValidDecimal(electricity_expense)):
+            messages.error(request, "Invalid expense values entered.")
+            return redirect('utility_expenses')  # Redirect to the form page if invalid
+
+        # Ensure the values are Decimal for calculation
+        water_expense = Decimal(water_expense)
+        electricity_expense = Decimal(electricity_expense)
+
+        # Look for an existing entry for this house, month, and year
+        existing_entry = UtilityExpense.objects.filter(
+            house_id=house_id, 
+            month=month,
+            year=year
+        ).first()
+
+        if existing_entry:
+            # If an existing entry is found, update the fields if they are not zero
+            if water_expense != 0:
+                existing_entry.water_expense = water_expense
+            if electricity_expense != 0:
+                existing_entry.electricity_expense = electricity_expense
+
+            # Recalculate total_expense based on updated values
+            existing_entry.total_expense = float(existing_entry.water_expense) + float(existing_entry.electricity_expense)
+            existing_entry.save()
+            messages.success(request, "Expenses updated successfully.")
+        else:
+            # Create a new entry if no existing one is found
+            UtilityExpense.objects.create(
+                house_id=house_id,
+                month=month,
+                year=year,
+                water_expense=water_expense,
+                electricity_expense=electricity_expense,
+                total_expense=float(water_expense + electricity_expense)  # Convert to float for total
+            )
+            messages.success(request, "Expenses added successfully.")
+        
+        return redirect('utility_expenses')  # Redirect after saving
+
+    return render(request, 'houses/utilityexpense.html', {
+        'houses': houses,
+        'months': months,
+        'years': years,
+        'selected_house': selected_house,
+        'selected_month': selected_month,
+        'selected_year': selected_year,
+    })

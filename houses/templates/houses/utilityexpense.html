@@ -1,0 +1,57 @@
+{% extends 'master.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>Add Utility Expenses for One House</h2>
+    
+    <!-- Display success or error messages -->
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <form method="post" id="expenseForm">
+        {% csrf_token %}
+        
+        <!-- House Selector -->
+        <label for="house">Select House:</label>
+        <select name="house" id="house" required>
+            {% for house in houses %}
+            <option value="{{ house.id }}" {% if selected_house == house.id %}selected{% endif %}>{{ house.name }}</option>
+            {% endfor %}
+        </select>
+
+        <!-- Month and Year Selector -->
+        <label for="month">Select Month:</label>
+        <select name="month" id="month" required>
+            {% for month in months %}
+            <option value="{{ month }}" {% if selected_month == month %}selected{% endif %}>{{ month }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="year">Select Year:</label>
+        <select name="year" id="year" required>
+            {% for year in years %}
+            <option value="{{ year }}" {% if selected_year == year %}selected{% endif %}>{{ year }}</option>
+            {% endfor %}
+        </select>
+
+        <!-- Water and Electricity Inputs -->
+        <div>
+            <label for="water">Water (€):</label>
+            <input type="text" name="water" id="water" placeholder="Enter water amount" value="{{ water_expense }}">
+        </div>
+
+        <div>
+            <label for="electricity">Electricity (€):</label>
+            <input type="text" name="electricity" id="electricity" placeholder="Enter electricity amount" value="{{ electricity_expense }}">
+        </div>
+
+        <!-- Save Button -->
+        <button type="submit" class="btn btn-primary">Save Expenses</button>
+    </form>
+</div>
+{% endblock %}

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import House
-from .models import Booking, Earning
+from .models import Booking, Earning, UtilityExpense
 
 # Customize how the houses are displayed in the admin panel
 class HouseAdmin(admin.ModelAdmin):
@@ -28,3 +28,10 @@ class EarningAdmin(admin.ModelAdmin):
 # Register the House model with the custom admin options
 admin.site.register(House, HouseAdmin)
 admin.site.register(Booking, BookingAdmin)
+
+
+@admin.register(UtilityExpense)
+class UtilityExpenseAdmin(admin.ModelAdmin):
+    list_display = ('house', 'month', 'year', 'water_expense', 'electricity_expense', 'total_expense')
+    list_filter = ('month', 'year', 'house')
+    search_fields = ('house__name',)
