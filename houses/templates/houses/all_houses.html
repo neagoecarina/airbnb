@@ -2,18 +2,11 @@
 
 {% block content %}
   <h1>Houses</h1>
-  
-  <a href="{% url 'add_house' %}" class="btn btn-primary">Add New House</a>
 
   <ul>
     {% for x in myhouses %}
       <li>
         <a href="{% url 'details' x.id %}">{{ x.name }} {{ x.address }} ${{ x.price }}</a>
-        <a href="{% url 'edit_house' x.id %}" class="btn btn-warning">Edit</a>
-        <form action="{% url 'delete_house' x.id %}" method="POST" style="display:inline;">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure?');">Delete</button>
-        </form>
       </li>
     {% empty %}
       <li>No houses available.</li>
