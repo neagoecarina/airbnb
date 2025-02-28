@@ -1,10 +1,13 @@
 {% extends 'master.html' %}
+<!-- Bootstrap & jQuery -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
 {% block content %}
 <div class="container">
     <h2>Add Utility Expenses for One House</h2>
-    
-    <!-- Display success or error messages -->
+
     {% if messages %}
     <div class="messages">
         {% for message in messages %}
@@ -12,46 +15,116 @@
         {% endfor %}
     </div>
     {% endif %}
-    
+
     <form method="post" id="expenseForm">
         {% csrf_token %}
-        
-        <!-- House Selector -->
+
         <label for="house">Select House:</label>
         <select name="house" id="house" required>
             {% for house in houses %}
-            <option value="{{ house.id }}" {% if selected_house == house.id %}selected{% endif %}>{{ house.name }}</option>
+            <option value="{{ house.id }}">{{ house.name }}</option>
             {% endfor %}
         </select>
 
-        <!-- Month and Year Selector -->
         <label for="month">Select Month:</label>
         <select name="month" id="month" required>
             {% for month in months %}
-            <option value="{{ month }}" {% if selected_month == month %}selected{% endif %}>{{ month }}</option>
+            <option value="{{ month }}">{{ month }}</option>
             {% endfor %}
         </select>
 
         <label for="year">Select Year:</label>
         <select name="year" id="year" required>
             {% for year in years %}
-            <option value="{{ year }}" {% if selected_year == year %}selected{% endif %}>{{ year }}</option>
+            <option value="{{ year }}">{{ year }}</option>
             {% endfor %}
         </select>
 
-        <!-- Water and Electricity Inputs -->
         <div>
             <label for="water">Water (€):</label>
-            <input type="text" name="water" id="water" placeholder="Enter water amount" value="{{ water_expense }}">
+            <input type="text" name="water" id="water" placeholder="Enter water amount">
         </div>
 
         <div>
             <label for="electricity">Electricity (€):</label>
-            <input type="text" name="electricity" id="electricity" placeholder="Enter electricity amount" value="{{ electricity_expense }}">
+            <input type="text" name="electricity" id="electricity" placeholder="Enter electricity amount">
         </div>
 
-        <!-- Save Button -->
-        <button type="submit" class="btn btn-primary">Save Expenses</button>
+        <button type="submit" id="submitBtn" class="btn btn-primary">Save Expenses</button>
     </form>
 </div>
+
+<!-- Bootstrap Modal -->
+<div class="modal fade" id="confirmModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Expense Already Registered</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="modalMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button type="button" id="proceedBtn" class="btn btn-success">Proceed</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('expenseForm').addEventListener('submit', function(event) {
+    event.preventDefault();  // Stop normal form submission
+
+    var formData = new FormData(this);
+
+    fetch("{% url 'utility_expenses' %}", {
+        method: "POST",
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message === "Existing expenses found") {
+            let message = "You have already registered expenses for this month. ";
+            if (data.existing_water !== "None" && parseFloat(data.existing_water) > 0) {
+                message += `Water expense is already €${data.existing_water}. `;
+            }
+            if (data.existing_electricity !== "None" && parseFloat(data.existing_electricity) > 0) {
+                message += `Electricity expense is already €${data.existing_electricity}. `;
+            }
+            message += "Do you wish to update the existing entry?";
+
+            document.getElementById("modalMessage").innerText = message;
+            $('#confirmModal').modal('show');  // Show the modal
+        } else {
+            alert(data.message);  // Success message
+            document.getElementById("expenseForm").reset();  // ✅ Clear form
+            location.reload();  // ✅ Reload page to update UI
+        }
+    })
+    .catch(error => console.error("Error:", error));
+});
+
+// Proceed with the update when "Proceed" button is clicked
+document.getElementById('proceedBtn').addEventListener('click', function() {
+    var formData = new FormData(document.getElementById('expenseForm'));
+    formData.append("proceed", "true");  // Add the proceed flag
+
+    fetch("{% url 'utility_expenses' %}", {
+        method: "POST",
+        body: formData,
+        headers: {
+            "X-CSRFToken": "{{ csrf_token }}",
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        document.getElementById("expenseForm").reset();  // ✅ Clear form
+        $('#confirmModal').modal('hide');  // ✅ Hide modal after update
+    });
+});
+</script>
+
 {% endblock %}
