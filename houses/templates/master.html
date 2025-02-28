@@ -8,16 +8,23 @@
 
   <!-- FullCalendar CSS -->
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@3.9.0/dist/fullcalendar.min.css" rel="stylesheet" />
-
 </head>
 <body>
 
   <header>
     <h1>Welcome to Airbnb Manager</h1>
     <nav>
-      <a href="/houses/">All Houses</a>
-      <a href="/admin/">Admin</a>
-      <a href="/utility-expenses/">Utility Expenses</a>
+      <a href="{% url 'home' %}" class="btn btn-primary">Go to Landing Page</a>
+
+      <!-- Make sure 'myhouse' is available in context -->
+      {% if myhouse %}
+        <a href="{% url 'details' myhouse.id %}" class="btn btn-secondary">Make Booking</a>
+      {% endif %}
+
+      <a href="/houses/" class="btn btn-info">All Houses</a>  <!-- Link to the list of houses -->
+      <a href="/admin/" class="btn btn-secondary">Admin</a>
+      <a href="/utility-expenses/" class="btn btn-warning">Utility Expenses</a>
+      <a href="{% url 'manage_houses' %}" class="btn btn-success">Manage Houses</a> <!-- New "Manage Houses" button -->
     </nav>
   </header>
 

@@ -22,9 +22,26 @@ from django.urls import path
 from houses import views  # Make sure to import the views from the 'houses' app
 
 urlpatterns = [
+    # Admin panel URL
     path('admin/', admin.site.urls),
-    path('', views.houses, name='home'),  # The homepage for all houses
-    path('houses/', views.houses, name='houses_list'),  # List of houses
+
+    # Landing page route
+    path('', views.landing_page, name='home'),  # Set the new landing page
+
+    # List of houses
+    path('houses/', views.houses, name='houses_list'),  # List all houses
+
+    # House details route
     path('houses/<int:house_id>/', views.house_detail, name='details'),  # House details page
+
+    # Routes for managing houses
+    path('houses/add/', views.house_form, name='add_house'),  # Add house
+    path('houses/edit/<int:house_id>/', views.house_form, name='edit_house'),  # Edit house
+    path('houses/delete/<int:house_id>/', views.delete_house, name='delete_house'),  # Delete house
+
+    # Utility expenses route
     path('utility-expenses/', views.add_utility_expenses, name='utility_expenses'),
+
+    # Manage houses page
+    path('houses/manage/', views.manage_houses, name='manage_houses'),
 ]

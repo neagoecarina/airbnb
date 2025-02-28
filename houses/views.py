@@ -7,11 +7,56 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 import re
 from decimal import Decimal
+from django.shortcuts import render, get_object_or_404, redirect
+from django.http import HttpResponse
+from .models import House
 
-# View to list all houses
+def landing_page(request):
+    return render(request, 'landing.html')  # This will load landing.html
+
+# List all houses
 def houses(request):
-    myhouses = House.objects.all()  # Query all houses from the database
+    myhouses = House.objects.all()
     return render(request, 'houses/all_houses.html', {'myhouses': myhouses})
+
+# View to manage houses (view all houses)
+def manage_houses(request):
+    houses = House.objects.all()
+    return render(request, 'houses/manage_houses.html', {'houses': houses})
+
+# View to add or edit a house
+def house_form(request, house_id=None):  # Use 'house_id' instead of 'id'
+    if house_id:
+        house = get_object_or_404(House, id=house_id)  # Update this line
+    else:
+        house = None
+
+    context = {'house': house}
+
+    if request.method == 'POST':
+        name = request.POST['name']
+        address = request.POST['address']
+        price = request.POST['price']
+
+        if house:
+            # Update the existing house
+            house.name = name
+            house.address = address
+            house.price = price
+            house.save()
+        else:
+            # Create a new house
+            House.objects.create(name=name, address=address, price=price)
+
+        return redirect('manage_houses')
+
+    return render(request, 'houses/house_form.html', context)
+# View to delete a house
+# View to delete a house
+def delete_house(request, house_id):  # Use 'house_id' here as well
+    house = get_object_or_404(House, id=house_id)  # Update this line
+    house.delete()
+    return redirect('manage_houses')  # Redirect after deletion
 
 # View for house details
 # View for house details
