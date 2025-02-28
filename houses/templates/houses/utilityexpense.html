@@ -73,58 +73,78 @@
     </div>
 </div>
 
+
 <script>
-document.getElementById('expenseForm').addEventListener('submit', function(event) {
-    event.preventDefault();  // Stop normal form submission
-
-    var formData = new FormData(this);
-
-    fetch("{% url 'utility_expenses' %}", {
-        method: "POST",
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.message === "Existing expenses found") {
-            let message = "You have already registered expenses for this month. ";
-            if (data.existing_water !== "None" && parseFloat(data.existing_water) > 0) {
-                message += `Water expense is already €${data.existing_water}. `;
+    document.getElementById('expenseForm').addEventListener('submit', function(event) {
+        event.preventDefault();  // Prevent normal form submission
+    
+        var formData = new FormData(this);
+    
+        // Fetch data from the backend to check if an existing entry exists
+        fetch("{% url 'utility_expenses' %}", {
+            method: "POST",
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Check if there's a need to show the modal
+            if (data.message === "Existing expenses found") {
+                let message = "";
+    
+                // Only show the modal for water if the existing water expense is > 0 and the user wants to update it
+                if (data.existing_water && parseFloat(data.existing_water) > 0 && formData.get('water')) {
+                    message += `Water expense is already €${data.existing_water}. Do you wish to update it? `;
+                }
+    
+                // Only show the modal for electricity if the existing electricity expense is > 0 and the user wants to update it
+                if (data.existing_electricity && parseFloat(data.existing_electricity) > 0 && formData.get('electricity')) {
+                    message += `Electricity expense is already €${data.existing_electricity}. Do you wish to update it? `;
+                }
+    
+                // Show the modal if there is any message
+                if (message) {
+                    document.getElementById("modalMessage").innerText = message;
+                    $('#confirmModal').modal('show');  // Show the modal for confirmation
+                } else {
+                    submitForm();  // Submit the form immediately if no modal is needed
+                }
+            } else {
+                alert(data.message);  // Success message
+                document.getElementById("expenseForm").reset();  // Clear form
+                location.reload();  // Reload page to update UI
             }
-            if (data.existing_electricity !== "None" && parseFloat(data.existing_electricity) > 0) {
-                message += `Electricity expense is already €${data.existing_electricity}. `;
-            }
-            message += "Do you wish to update the existing entry?";
-
-            document.getElementById("modalMessage").innerText = message;
-            $('#confirmModal').modal('show');  // Show the modal
-        } else {
-            alert(data.message);  // Success message
-            document.getElementById("expenseForm").reset();  // ✅ Clear form
-            location.reload();  // ✅ Reload page to update UI
-        }
-    })
-    .catch(error => console.error("Error:", error));
-});
-
-// Proceed with the update when "Proceed" button is clicked
-document.getElementById('proceedBtn').addEventListener('click', function() {
-    var formData = new FormData(document.getElementById('expenseForm'));
-    formData.append("proceed", "true");  // Add the proceed flag
-
-    fetch("{% url 'utility_expenses' %}", {
-        method: "POST",
-        body: formData,
-        headers: {
-            "X-CSRFToken": "{{ csrf_token }}",
-        },
-    })
-    .then(response => response.json())
-    .then(data => {
-        alert(data.message);
-        document.getElementById("expenseForm").reset();  // ✅ Clear form
-        $('#confirmModal').modal('hide');  // ✅ Hide modal after update
+        })
+        .catch(error => console.error("Error:", error));
     });
-});
-</script>
+    
+    // Proceed with the update when "Proceed" button is clicked in the modal
+    document.getElementById('proceedBtn').addEventListener('click', function() {
+        submitForm();  // Submit form after confirmation in modal
+        $('#confirmModal').modal('hide');  // Hide modal after confirming
+    });
+    
+    // Helper function to submit the form
+    function submitForm() {
+        var formData = new FormData(document.getElementById('expenseForm'));
+        formData.append("proceed", "true");  // Add the proceed flag to the data
+    
+        fetch("{% url 'utility_expenses' %}", {
+            method: "POST",
+            body: formData,
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}",
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);  // Success message
+            document.getElementById("expenseForm").reset();  // Clear form
+            location.reload();  // Reload page to update UI
+        })
+        .catch(error => console.error("Error:", error));
+    }
+    </script>
+    
 
+    
 {% endblock %}

@@ -67,11 +67,15 @@ def isValidDecimal(value):
     decimalPattern = r'^\d+(\.\d{1,2})?$'  # Pattern for valid decimal (up to two decimal places)
     return bool(re.match(decimalPattern, value))
 
+from django.http import JsonResponse
+from decimal import Decimal
+from .models import UtilityExpense
+
 def add_utility_expenses(request):
     houses = House.objects.all()
     months = range(1, 13)
     years = range(2023, 2034)
-    
+
     if request.method == "POST":
         house_id = request.POST.get('house')
         month = request.POST.get('month')
@@ -94,35 +98,66 @@ def add_utility_expenses(request):
         existing_entry = UtilityExpense.objects.filter(house_id=house_id, month=month, year=year).first()
 
         if existing_entry:
+            # Check if the user confirmed update in the modal (proceed == "true")
             if proceed == "true":  # User confirmed update
-                # Update the water and electricity expenses
-                existing_entry.water_expense = water_expense if water_expense is not None else existing_entry.water_expense
-                existing_entry.electricity_expense = electricity_expense if electricity_expense is not None else existing_entry.electricity_expense
+                # Only update the water expense if provided and not None
+                if water_expense is not None:
+                    existing_entry.water_expense = water_expense
+                
+                # Only update the electricity expense if provided and not None
+                if electricity_expense is not None:
+                    existing_entry.electricity_expense = electricity_expense
 
                 # Recalculate total expense
                 existing_entry.total_expense = float(existing_entry.water_expense) + float(existing_entry.electricity_expense)
                 existing_entry.save()
 
                 return JsonResponse({"message": "Expenses updated successfully."})
-            else:
-                # If either water or electricity has been registered already with a non-zero value, show the modal
-                if existing_entry.water_expense > 0 or existing_entry.electricity_expense > 0:
-                    return JsonResponse({
-                        "message": "Existing expenses found",
-                        "existing_water": str(existing_entry.water_expense),
-                        "existing_electricity": str(existing_entry.electricity_expense),
-                    })
 
-        # Create new entry if none exists
-        UtilityExpense.objects.create(
-            house_id=house_id,
-            month=month,
-            year=year,
-            water_expense=water_expense or 0,  # Default to 0 if still None
-            electricity_expense=electricity_expense or 0,
-            total_expense=float((water_expense or 0) + (electricity_expense or 0))
-        )
-        return JsonResponse({"message": "Expenses added successfully."})
+            else:
+                modal_message = ""
+                
+                # Only show the modal if water is being updated and it's already > 0
+                if water_expense is not None and existing_entry.water_expense > 0:
+                    modal_message += f"Water expense is already €{existing_entry.water_expense}. Do you wish to update it? "
+
+                # Only show the modal if electricity is being updated and it's already > 0
+                if electricity_expense is not None and existing_entry.electricity_expense > 0:
+                    modal_message += f"Electricity expense is already €{existing_entry.electricity_expense}. Do you wish to update it? "
+                
+                # If no modal message, proceed with the update automatically (save without modal)
+                if not modal_message:
+                    # Update the expenses without needing confirmation
+                    if water_expense is not None:
+                        existing_entry.water_expense = water_expense
+                    if electricity_expense is not None:
+                        existing_entry.electricity_expense = electricity_expense
+
+                    # Recalculate total expense
+                    existing_entry.total_expense = float(existing_entry.water_expense) + float(existing_entry.electricity_expense)
+                    existing_entry.save()
+
+                    return JsonResponse({"message": "Expenses updated successfully."})
+
+                # If there is a modal message, return the modal message
+                return JsonResponse({
+                    "message": "Existing expenses found",
+                    "modal_message": modal_message,
+                    "existing_water": str(existing_entry.water_expense),
+                    "existing_electricity": str(existing_entry.electricity_expense),
+                })
+
+        else:
+            # If no existing entry for this house, month, and year, create a new entry
+            UtilityExpense.objects.create(
+                house_id=house_id,
+                month=month,
+                year=year,
+                water_expense=water_expense or 0,  # Default to 0 if still None
+                electricity_expense=electricity_expense or 0,
+                total_expense=float((water_expense or 0) + (electricity_expense or 0))
+            )
+            return JsonResponse({"message": "Expenses added successfully."})
 
     return render(request, 'houses/utilityexpense.html', {
         'houses': houses,
