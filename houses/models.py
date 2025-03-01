@@ -2,6 +2,7 @@ from django.db import models
 from django.utils import timezone
 from datetime import datetime
 from decimal import Decimal
+
 # Create your models here.
 # houses/models.py
 
@@ -64,6 +65,19 @@ class Booking(models.Model):
         yearly_earnings.total_earnings = Decimal(str(yearly_earnings.total_earnings)) + self.booking_earnings
         yearly_earnings.save()
 
+# Update HouseEarnings for this house and month
+        house_earnings = HouseEarning.get_or_create_house_earnings(self.house, month_name)
+
+
+# Ensure that we are adding the new earnings to the current total
+        
+        house_earnings.total_price += float(str(self.booking_earnings))
+
+
+
+
+# Save the updated house earnings
+        house_earnings.save()
 
 
 
@@ -103,4 +117,18 @@ class YearlyEarning(models.Model):
     def get_or_create_yearly_earnings(year):
         # Check if earnings for this year already exist
         earnings, created = YearlyEarning.objects.get_or_create(year=year)
+        return earnings
+
+class HouseEarning(models.Model):
+    house = models.ForeignKey(House, on_delete=models.CASCADE, related_name='house_earnings')
+    month = models.CharField(max_length=7)  # Format: YYYY-MM
+    total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+
+    def __str__(self):
+        return f"Earnings for {self.house.name} in {self.month}"
+
+    @staticmethod
+    def get_or_create_house_earnings(house, month):
+        # Get or create earnings for a specific house and month
+        earnings, created = HouseEarning.objects.get_or_create(house=house, month=month)
         return earnings
