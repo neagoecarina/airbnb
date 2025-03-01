@@ -18,5 +18,8 @@ urlpatterns = [
     path('houses/edit/<int:house_id>/', views.house_form, name='edit_house'),  # Rename to house_id
     path('houses/delete/<int:house_id>/', views.delete_house, name='delete_house'),  # Rename to house_id
 
+     # Financial Overview Page
+    path('houses/finance-overview/', views.financial_overview, name='financial_overview'),
     path('calculate-taxes/', views.calculate_taxes, name='calculate_taxes'),
 ]
+

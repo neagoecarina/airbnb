@@ -210,84 +210,115 @@ def add_utility_expenses(request):
         'years': years,
     })
 
-from django.db import models
-def financial_overview(request):
-    # Get monthly and yearly earnings
-    total_monthly_earnings = MonthlyEarning.objects.latest('month_name').total_earnings
-    total_yearly_earnings = YearlyEarning.objects.latest('year').total_earnings
+from django.shortcuts import render
+from decimal import Decimal
+from .models import MonthlyEarning, YearlyEarning, UtilityExpense, HouseEarning
+import json
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Sum
 
-    # Check VAT threshold
-    vat_required = total_yearly_earnings > 300000
+def financial_overview(request):
+    # Get the latest monthly and yearly earnings or set defaults if no entries
+    try:
+        total_monthly_earnings = MonthlyEarning.objects.latest('month_name').total_earnings
+    except MonthlyEarning.DoesNotExist:
+        total_monthly_earnings = Decimal('0.00')
+
+    try:
+        total_yearly_earnings = YearlyEarning.objects.latest('year').total_earnings
+    except YearlyEarning.DoesNotExist:
+        total_yearly_earnings = Decimal('0.00')
+
+    # Check VAT threshold (if total yearly earnings exceed the VAT registration threshold)
+    vat_required = total_yearly_earnings > Decimal('300000')  # VAT threshold (300,000 RON)
 
     # Microenterprise tax (SRL)
-    has_employee = True  # Change this based on business setup
-# Convert the float to Decimal before multiplying
-    micro_tax_1 = round(total_monthly_earnings * Decimal('0.01'), 2)
-    micro_tax_3 = round(total_monthly_earnings * Decimal('0.03'), 2)
+    num_employees = 0  # Default, dynamically set as needed
 
-    # Income tax (PFA - 10%)
+    # Calculate Microenterprise tax based on the number of employees
+    if num_employees == 0:
+        micro_tax_rate = Decimal('0.01')  # 1% tax rate for SRL without employees
+    else:
+        micro_tax_rate = Decimal('0.03')  # 3% tax rate for SRL with employees
+
+    micro_tax = round(total_monthly_earnings * micro_tax_rate, 2)
+
+    # Income tax (PFA - 10%) - For PFA, apply tax to the yearly earnings
     income_tax = round(total_yearly_earnings * Decimal('0.1'), 2)
 
-    # Get total utility expenses
-    current_month = UtilityExpense.objects.latest('month').month
-    total_utilities = UtilityExpense.objects.filter(month=current_month).aggregate(total=models.Sum('total_expense'))['total'] or 0
+    # Calculate VAT if required (9% on total yearly earnings)
+    if vat_required:
+        vat = round(total_yearly_earnings * Decimal('0.09'), 2)
+    else:
+        vat = 0.0
 
-    # House-specific earnings for this month
-    current_month_str = UtilityExpense.objects.latest('month').month
-    house_earnings = HouseEarning.objects.filter(month=current_month_str)
+    # Get total utility expenses for the current month or set to 0 if no entries
+    try:
+        current_month = UtilityExpense.objects.latest('month').month
+        total_utilities = UtilityExpense.objects.filter(month=current_month).aggregate(total=Sum('total_expense'))['total'] or 0
+    except UtilityExpense.DoesNotExist:
+        total_utilities = Decimal('0.00')
 
-    # Get earnings data for charts
-    earnings_by_month = MonthlyEarning.objects.all().order_by('month_name')
-    months = [e.month_name for e in earnings_by_month]
-    earnings_data = [e.total_earnings for e in earnings_by_month]
-
+    # Prepare context for the template
     context = {
         'total_monthly_earnings': total_monthly_earnings,
         'total_yearly_earnings': total_yearly_earnings,
         'vat_required': vat_required,
-        'micro_tax_1': micro_tax_1,
-        'micro_tax_3': micro_tax_3,
+        'micro_tax': micro_tax,
         'income_tax': income_tax,
+        'vat': vat,
         'total_utilities': total_utilities,
-        'house_earnings': house_earnings,
-        'months': months,
-        'earnings_data': earnings_data,
-        'has_employee': has_employee,
     }
 
     return render(request, "houses/financial_overview.html", context)
 
-
-import json
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from decimal import Decimal
-
+# API to calculate taxes dynamically for PFA or SRL
 @csrf_exempt
-
 def calculate_taxes(request):
+    # Get the latest monthly and yearly earnings or set defaults if no entries
+    try:
+        total_monthly_earnings = MonthlyEarning.objects.latest('month_name').total_earnings
+    except MonthlyEarning.DoesNotExist:
+        total_monthly_earnings = Decimal('0.00')
+
+    try:
+        total_yearly_earnings = YearlyEarning.objects.latest('year').total_earnings
+    except YearlyEarning.DoesNotExist:
+        total_yearly_earnings = Decimal('0.00')
+
     if request.method == 'POST':
         data = json.loads(request.body)
         business_mode = data.get('business_mode')
         num_employees = int(data.get('employees', 0))
 
-        # Calculate tax values
+        # Calculate tax values based on business mode
+        response_data = {}
+
         if business_mode == 'PFA':
-            total_tax = Decimal('1000')  # Example calculation for PFA
-            income_tax = total_tax * Decimal('0.1')
-            vat = income_tax * Decimal('0.19')  # Example VAT for PFA
+            # Calculate tax for PFA (10% income tax)
+            total_income = total_yearly_earnings  # Use actual total yearly earnings for PFA
+            income_tax = total_income * Decimal('0.1')  # 10% income tax for PFA
+            vat = total_income * Decimal('0.09')  # 9% VAT for PFA
             response_data = {
                 'income_tax': income_tax.quantize(Decimal('0.01')),
                 'vat': vat.quantize(Decimal('0.01'))
             }
 
         elif business_mode == 'SRL':
-            total_tax = Decimal('2000')  # Example calculation for SRL
-            micro_tax = total_tax * Decimal('0.01') if num_employees == 0 else total_tax * Decimal('0.03')
-            vat = total_tax * Decimal('0.19')
+            total_income = total_monthly_earnings  # Use actual total monthly earnings for SRL
+
+            # Determine the correct microenterprise tax rate (1% or 3%)
+            if num_employees == 0:
+                micro_tax = total_income * Decimal('0.01')  # 1% tax rate for SRL without employees
+            else:
+                micro_tax = total_income * Decimal('0.03')  # 3% tax rate for SRL with employees
+
+            vat = total_income * Decimal('0.09')  # 9% VAT for SRL
             response_data = {
                 'micro_tax': micro_tax.quantize(Decimal('0.01')),
                 'vat': vat.quantize(Decimal('0.01'))
             }
 
+        # Return the JSON response with calculated taxes
         return JsonResponse(response_data)
