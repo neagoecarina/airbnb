@@ -17,5 +17,6 @@ urlpatterns = [
     path('houses/add/', views.house_form, name='add_house'),  # Add a new house
     path('houses/edit/<int:house_id>/', views.house_form, name='edit_house'),  # Rename to house_id
     path('houses/delete/<int:house_id>/', views.delete_house, name='delete_house'),  # Rename to house_id
-]
+
+    path('calculate-taxes/', views.calculate_taxes, name='calculate_taxes'),
 ]

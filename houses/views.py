@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
-from .models import House, Booking, UtilityExpense
+from .models import House, Booking, UtilityExpense,MonthlyEarning, YearlyEarning, HouseEarning
 from datetime import datetime, timedelta
 import json
 from django.views.decorators.csrf import csrf_exempt
@@ -209,3 +209,85 @@ def add_utility_expenses(request):
         'months': months,
         'years': years,
     })
+
+from django.db import models
+def financial_overview(request):
+    # Get monthly and yearly earnings
+    total_monthly_earnings = MonthlyEarning.objects.latest('month_name').total_earnings
+    total_yearly_earnings = YearlyEarning.objects.latest('year').total_earnings
+
+    # Check VAT threshold
+    vat_required = total_yearly_earnings > 300000
+
+    # Microenterprise tax (SRL)
+    has_employee = True  # Change this based on business setup
+# Convert the float to Decimal before multiplying
+    micro_tax_1 = round(total_monthly_earnings * Decimal('0.01'), 2)
+    micro_tax_3 = round(total_monthly_earnings * Decimal('0.03'), 2)
+
+    # Income tax (PFA - 10%)
+    income_tax = round(total_yearly_earnings * Decimal('0.1'), 2)
+
+    # Get total utility expenses
+    current_month = UtilityExpense.objects.latest('month').month
+    total_utilities = UtilityExpense.objects.filter(month=current_month).aggregate(total=models.Sum('total_expense'))['total'] or 0
+
+    # House-specific earnings for this month
+    current_month_str = UtilityExpense.objects.latest('month').month
+    house_earnings = HouseEarning.objects.filter(month=current_month_str)
+
+    # Get earnings data for charts
+    earnings_by_month = MonthlyEarning.objects.all().order_by('month_name')
+    months = [e.month_name for e in earnings_by_month]
+    earnings_data = [e.total_earnings for e in earnings_by_month]
+
+    context = {
+        'total_monthly_earnings': total_monthly_earnings,
+        'total_yearly_earnings': total_yearly_earnings,
+        'vat_required': vat_required,
+        'micro_tax_1': micro_tax_1,
+        'micro_tax_3': micro_tax_3,
+        'income_tax': income_tax,
+        'total_utilities': total_utilities,
+        'house_earnings': house_earnings,
+        'months': months,
+        'earnings_data': earnings_data,
+        'has_employee': has_employee,
+    }
+
+    return render(request, "houses/financial_overview.html", context)
+
+
+import json
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from decimal import Decimal
+
+@csrf_exempt
+
+def calculate_taxes(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        business_mode = data.get('business_mode')
+        num_employees = int(data.get('employees', 0))
+
+        # Calculate tax values
+        if business_mode == 'PFA':
+            total_tax = Decimal('1000')  # Example calculation for PFA
+            income_tax = total_tax * Decimal('0.1')
+            vat = income_tax * Decimal('0.19')  # Example VAT for PFA
+            response_data = {
+                'income_tax': income_tax.quantize(Decimal('0.01')),
+                'vat': vat.quantize(Decimal('0.01'))
+            }
+
+        elif business_mode == 'SRL':
+            total_tax = Decimal('2000')  # Example calculation for SRL
+            micro_tax = total_tax * Decimal('0.01') if num_employees == 0 else total_tax * Decimal('0.03')
+            vat = total_tax * Decimal('0.19')
+            response_data = {
+                'micro_tax': micro_tax.quantize(Decimal('0.01')),
+                'vat': vat.quantize(Decimal('0.01'))
+            }
+
+        return JsonResponse(response_data)

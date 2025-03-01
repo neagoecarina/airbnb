@@ -1,0 +1,212 @@
+{% extends 'master.html' %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>Financial Overview</h2>
+
+  <div class="row">
+    <!-- Business Mode Toggle -->
+    <div class="col-md-12">
+      <div class="form-check form-check-inline">
+        <input type="radio" id="pfa" name="business_mode" value="PFA" class="form-check-input" checked>
+        <label class="form-check-label" for="pfa">PFA</label>
+      </div>
+      <div class="form-check form-check-inline">
+        <input type="radio" id="srl" name="business_mode" value="SRL" class="form-check-input">
+        <label class="form-check-label" for="srl">SRL</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="row" id="employee-option" style="display: none;">
+    <!-- SRL Employee Dropdown -->
+    <div class="col-md-12">
+      <div class="form-group">
+        <label for="employees">Number of Employees:</label>
+        <select id="employees" name="employees" class="form-control">
+          <option value="0">None</option>
+          <option value="1">At least One</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Monthly Earnings -->
+    <div class="col-md-4">
+      <div class="card text-white bg-primary mb-3">
+        <div class="card-header">Total Monthly Earnings</div>
+        <div class="card-body">
+          <h4 class="card-title">{{ total_monthly_earnings }} RON</h4>
+        </div>
+      </div>
+    </div>
+
+    <!-- Yearly Earnings -->
+    <div class="col-md-4">
+      <div class="card text-white bg-success mb-3">
+        <div class="card-header">Total Yearly Earnings</div>
+        <div class="card-body">
+          <h4 class="card-title">{{ total_yearly_earnings }} RON</h4>
+        </div>
+      </div>
+    </div>
+
+    <!-- VAT Status -->
+    <div class="col-md-4">
+      <div class="card text-white bg-danger mb-3">
+        <div class="card-header">VAT Status</div>
+        <div class="card-body">
+          <h4 class="card-title">
+            {% if total_yearly_earnings > 300000 %}
+              You must charge VAT (9%)
+            {% else %}
+              No VAT required
+            {% endif %}
+          </h4>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Microenterprise Tax (SRL) - Only displayed if SRL is selected -->
+    <div class="col-md-6" id="micro-tax-srl" style="display: none;">
+      <div class="card text-white bg-warning mb-3">
+        <div class="card-header">Microenterprise Tax (SRL)</div>
+        <div class="card-body">
+          <h4 class="card-title">
+            {% if has_employee %}
+              1% Tax: {{ micro_tax_1 }} RON
+            {% else %}
+              3% Tax: {{ micro_tax_3 }} RON
+            {% endif %}
+          </h4>
+        </div>
+      </div>
+    </div>
+
+    <!-- PFA Income Tax (10%) - Only displayed if PFA is selected -->
+    <div class="col-md-6" id="pfa-tax">
+      <div class="card text-white bg-info mb-3">
+        <div class="card-header">PFA Income Tax (10%)</div>
+        <div class="card-body">
+          <h4 class="card-title">{{ income_tax }} RON</h4>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Utility Expenses -->
+  <div class="card mt-4">
+    <div class="card-header">Total Utility Expenses This Month</div>
+    <div class="card-body">
+      <h4 class="card-title">{{ total_utilities }} RON</h4>
+    </div>
+  </div>
+
+  <!-- Monthly Earnings Chart -->
+  <div class="card mt-4">
+    <div class="card-body">
+      <canvas id="earningsChart"></canvas>
+    </div>
+  </div>
+
+  <!-- House Earnings Table -->
+  <div class="card mt-4">
+    <div class="card-header">Earnings per House (This Month)</div>
+    <div class="card-body">
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>House</th>
+            <th>Monthly Earnings (RON)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for house in house_earnings %}
+          <tr>
+            <td>{{ house.name }}</td>
+            <td>{{ house.total_price }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+
+document.querySelectorAll('input[name="business_mode"]').forEach(input => {
+    input.addEventListener('change', function() {
+      const businessMode = this.value;
+      const employeeOption = document.getElementById('employee-option');
+      const microTaxSrl = document.getElementById('micro-tax-srl');
+      const pfaTax = document.getElementById('pfa-tax');
+  
+      // Show or hide relevant sections based on the selected business mode
+      if (businessMode === 'SRL') {
+        employeeOption.style.display = 'block'; // Show employee option for SRL
+        microTaxSrl.style.display = 'block'; // Show SRL tax details
+        pfaTax.style.display = 'none'; // Hide PFA tax details
+      } else {
+        employeeOption.style.display = 'none'; // Hide employee option for PFA
+        microTaxSrl.style.display = 'none'; // Hide SRL tax details
+        pfaTax.style.display = 'block'; // Show PFA tax details
+      }
+  
+      // Optionally, call a function to update tax calculations if necessary
+      updateTaxCalculation();
+    });
+  });
+  
+  // Update tax calculation based on selection
+  document.getElementById('employees')?.addEventListener('change', updateTaxCalculation);
+  
+  function updateTaxCalculation() {
+    const businessMode = document.querySelector('input[name="business_mode"]:checked').value;
+    const numEmployees = document.getElementById('employees') ? document.getElementById('employees').value : 0;
+  
+    fetch('/calculate-taxes/', {
+      method: 'POST',
+      body: JSON.stringify({ business_mode: businessMode, employees: numEmployees }),
+      headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+      // Update the tax display with the returned values
+      if (businessMode === 'SRL' && data.micro_tax) {
+        document.getElementById('micro-tax-srl').innerHTML = `
+          <div class="card text-white bg-warning mb-3">
+            <div class="card-header">Microenterprise Tax (SRL)</div>
+            <div class="card-body">
+              <h4 class="card-title">Tax: ${data.micro_tax} RON</h4>
+            </div>
+          </div>
+        `;
+      } else if (businessMode === 'PFA' && data.income_tax) {
+        document.getElementById('pfa-tax').innerHTML = `
+          <div class="card text-white bg-info mb-3">
+            <div class="card-header">PFA Income Tax (10%)</div>
+            <div class="card-body">
+              <h4 class="card-title">${data.income_tax} RON</h4>
+            </div>
+          </div>
+        `;
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+    });
+  }
+  
+  // Initialize tax calculation on page load
+  updateTaxCalculation();
+  
+</script>
+{% endblock %}
+

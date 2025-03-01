@@ -44,4 +44,8 @@ urlpatterns = [
 
     # Manage houses page
     path('houses/manage/', views.manage_houses, name='manage_houses'),
+
+    # Financial Overview Page
+    path('houses/finance-overview/', views.financial_overview, name='financial_overview'),
+    path('calculate-taxes/', views.calculate_taxes, name='calculate_taxes'),
 ]
