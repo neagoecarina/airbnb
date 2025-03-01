@@ -54,6 +54,18 @@ class Booking(models.Model):
         earnings.total_earnings = Decimal(str(earnings.total_earnings)) + booking_earnings
         earnings.save()
 
+# Get the year from the start date
+        year = self.start_date.year
+
+# Get or create the earnings for the given year
+        yearly_earnings = YearlyEarning.get_or_create_yearly_earnings(str(year))
+
+# Update the total earnings for the year
+        yearly_earnings.total_earnings = Decimal(str(yearly_earnings.total_earnings)) + self.booking_earnings
+        yearly_earnings.save()
+
+
+
 
 class MonthlyEarning(models.Model):
     month_name = models.CharField(max_length=7)  # Format: YYYY-MM
@@ -79,3 +91,16 @@ class UtilityExpense(models.Model):
     def save(self, *args, **kwargs):
         self.total_expense = self.water_expense + self.electricity_expense
         super().save(*args, **kwargs)
+
+class YearlyEarning(models.Model):
+    year = models.CharField(max_length=4)  # Format: YYYY
+    total_earnings = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+
+    def __str__(self):
+        return f"Earnings for {self.year}"
+
+    @staticmethod
+    def get_or_create_yearly_earnings(year):
+        # Check if earnings for this year already exist
+        earnings, created = YearlyEarning.objects.get_or_create(year=year)
+        return earnings

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import House
-from .models import Booking, MonthlyEarning, UtilityExpense
+from .models import Booking, MonthlyEarning, UtilityExpense, YearlyEarning
 
 # Customize how the houses are displayed in the admin panel
 class HouseAdmin(admin.ModelAdmin):
@@ -20,7 +20,7 @@ class BookingAdmin(admin.ModelAdmin):
 
 
 @admin.register(MonthlyEarning)
-class EarningAdmin(admin.ModelAdmin):
+class MonthlyEarningEarningAdmin(admin.ModelAdmin):
     list_display = ('month_name', 'total_earnings')  # Display month and total earnings
     search_fields = ('month_name',)  # Allow search by month name
     list_filter = ('month_name',)  # Filter by month name
@@ -36,3 +36,8 @@ class UtilityExpenseAdmin(admin.ModelAdmin):
     list_filter = ('month', 'year', 'house')
     search_fields = ('house__name',) 
 
+@admin.register(YearlyEarning)
+class YearlyEarningAdmin(admin.ModelAdmin):
+    list_display = ('year', 'total_earnings')  # Display year and total earnings
+    search_fields = ('year',)  # Allow search by year
+    list_filter = ('year',)  # Filter by year
