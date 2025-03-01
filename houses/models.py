@@ -20,12 +20,13 @@ class Booking(models.Model):
     customer_name = models.CharField(max_length=255, default="Unknown")
     start_date = models.DateField()
     end_date = models.DateField()
+    booking_earnings = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)  # New field
 
     def __str__(self):
         return f"Booking for {self.house.name} by {self.customer_name}"
  
     def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
+        #super().save(*args, **kwargs)
         # Calculate total days of the booking
         total_days = (self.end_date - self.start_date).days+1
         # Get the price per night from the associated house
@@ -33,7 +34,10 @@ class Booking(models.Model):
 
         # Calculate the earnings from this booking
         booking_earnings = total_days * price_per_night
+        # Ensure booking_earnings is Decimal
+        self.booking_earnings = Decimal(str(booking_earnings))  # Set the booking_earnings before saving
 
+        super().save(*args, **kwargs)
         # Get the month name (YYYY-MM)
         month_name = self.start_date.strftime("%Y-%m")
 
