@@ -42,7 +42,7 @@ class Booking(models.Model):
         month_name = self.start_date.strftime("%Y-%m")
 
         # Get or create the earnings for this month
-        earnings = Earning.get_or_create_earnings_for_month(month_name)
+        earnings = MonthlyEarning.get_or_create_earnings_for_month(month_name)
 
         # Update the total earnings for the month
 
@@ -55,7 +55,7 @@ class Booking(models.Model):
         earnings.save()
 
 
-class Earning(models.Model):
+class MonthlyEarning(models.Model):
     month_name = models.CharField(max_length=7)  # Format: YYYY-MM
     total_earnings = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
@@ -65,7 +65,7 @@ class Earning(models.Model):
     @staticmethod
     def get_or_create_earnings_for_month(month_name):
         # Check if earnings for this month already exist
-        earnings, created = Earning.objects.get_or_create(month_name=month_name)
+        earnings, created = MonthlyEarning.objects.get_or_create(month_name=month_name)
         return earnings
     
 class UtilityExpense(models.Model):
