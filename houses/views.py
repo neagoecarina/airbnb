@@ -322,3 +322,4 @@ def calculate_taxes(request):
 
         # Return the JSON response with calculated taxes
         return JsonResponse(response_data)
+

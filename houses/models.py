@@ -22,6 +22,8 @@ class Booking(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     booking_earnings = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)  # New field
+    cleaning_fee = models.DecimalField(max_digits=10, decimal_places=2, default=50.0)  # Default cleaning fee value
+
 
     def __str__(self):
         return f"Booking for {self.house.name} by {self.customer_name}"
@@ -39,6 +41,17 @@ class Booking(models.Model):
         self.booking_earnings = Decimal(str(booking_earnings))  # Set the booking_earnings before saving
 
         super().save(*args, **kwargs)
+        
+        # Create the Cleaning Fee Expense for the booking
+        
+        BookingExpense.objects.create(
+            booking=self,
+            expense_type="Cleaning Fee",
+            amount=self.cleaning_fee,
+            month=self.start_date.month,
+            year=self.start_date.year
+        )
+
         # Get the month name (YYYY-MM)
         month_name = self.start_date.strftime("%Y-%m")
 
@@ -132,3 +145,13 @@ class HouseEarning(models.Model):
         # Get or create earnings for a specific house and month
         earnings, created = HouseEarning.objects.get_or_create(house=house, month=month)
         return earnings
+    
+class BookingExpense(models.Model):
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE)
+    expense_type = models.CharField(max_length=255, default="Cleaning Fee")
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    month = models.IntegerField()  # month of the booking
+    year = models.IntegerField()  # year of the booking
+
+    def __str__(self):
+        return f"{self.expense_type} for {self.booking.house.name} in {self.month}/{self.year}"

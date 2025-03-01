@@ -1,6 +1,13 @@
 from django.contrib import admin
 from .models import House
-from .models import Booking, MonthlyEarning, UtilityExpense, YearlyEarning, HouseEarning
+from .models import Booking, MonthlyEarning, UtilityExpense, YearlyEarning, HouseEarning, BookingExpense
+
+
+# BookingExpense inline
+class BookingExpenseInline(admin.TabularInline):
+    model = BookingExpense
+    extra = 0  # Do not show extra empty forms
+
 
 # Customize how the houses are displayed in the admin panel
 class HouseAdmin(admin.ModelAdmin):
@@ -17,6 +24,7 @@ class BookingAdmin(admin.ModelAdmin):
 
   # Add a search bar that allows searching by house name, address, and customer name
     search_fields = ['house__name', 'house__address', 'customer_name']  # Use double underscore to access related model fields
+    inlines = [BookingExpenseInline]  # Show related BookingExpense inline
 
 
 @admin.register(MonthlyEarning)
@@ -48,3 +56,11 @@ class HouseEarningAdmin(admin.ModelAdmin):
     search_fields = ('house__name', 'month')  # Allow search by house name and month
     list_filter = ('month', 'house')  # Filter by month and house
     ordering = ('-month',)  # Order by month in descending order
+
+# Customize how the booking expenses are displayed in the admin panel
+@admin.register(BookingExpense)
+class BookingExpenseAdmin(admin.ModelAdmin):
+    list_display = ('booking', 'expense_type', 'amount', 'month', 'year')  # Display booking, expense type, amount, and month/year
+    search_fields = ('booking__house__name', 'booking__customer_name', 'expense_type')  # Search by house name, customer name, and expense type
+    list_filter = ('expense_type', 'month', 'year')  # Filter by expense type, month, and year
+    ordering = ('-year', '-month')  # Order by year and month in descending order
