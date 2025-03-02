@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import House
-from .models import Booking, MonthlyEarning, UtilityExpense, YearlyEarning, HouseEarning, BookingExpense
+from .models import Booking, MonthlyEarning, UtilityExpense, YearlyEarning, HouseEarning, BookingExpense, MonthlyExpense
 
 
 # BookingExpense inline
@@ -64,3 +64,9 @@ class BookingExpenseAdmin(admin.ModelAdmin):
     search_fields = ('booking__house__name', 'booking__customer_name', 'expense_type')  # Search by house name, customer name, and expense type
     list_filter = ('expense_type', 'month', 'year')  # Filter by expense type, month, and year
     ordering = ('-year', '-month')  # Order by year and month in descending order
+
+@admin.register(MonthlyExpense)
+class MonthlyExpenseAdmin(admin.ModelAdmin):
+    list_display = ('house', 'month', 'year', 'total_expense')
+    search_fields = ('house__name', 'month', 'year')
+    list_filter = ('year', 'month', 'house')
