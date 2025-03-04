@@ -231,7 +231,7 @@ def financial_overview(request):
         total_yearly_earnings = Decimal('0.00')
 
     # Check VAT threshold (if total yearly earnings exceed the VAT registration threshold)
-    vat_required = total_yearly_earnings > Decimal('300000')  # VAT threshold (300,000 RON)
+    vat_required = total_yearly_earnings > Decimal('300000')  # VAT threshold# VAT threshold (300,000 RON)
 
     # Microenterprise tax (SRL)
     num_employees = 0  # Default, dynamically set as needed
@@ -253,20 +253,42 @@ def financial_overview(request):
     else:
         vat = 0.0
 
-    # Get total monthly expenses for the current month or set to 0 if no entries
+# Get the current month
     try:
         current_month = MonthlyExpense.objects.latest('month').month
-        total_monthly_expenses  = MonthlyExpense.objects.filter(month=current_month).aggregate(total=Sum('total_expense'))['total'] or 0
     except MonthlyExpense.DoesNotExist:
-        total_monthly_expenses  = Decimal('0.00')
+        current_month = None
 
-    # Get total utility expenses for the current month or set to 0 if no entries 
+    # Get total monthly expenses for the current month or set to 0 if no entries
+    if current_month:
+        total_monthly_expenses = MonthlyExpense.objects.filter(month=current_month).aggregate(total=Sum('total_expense'))['total'] or Decimal('0.00')
+    else:
+        total_monthly_expenses = Decimal('0.00')
 
+    # Get total utility expenses for the current month or set to 0 if no entries
     try:
-        current_month = UtilityExpense.objects.latest('month').month
-        total_utilities = UtilityExpense.objects.filter(month=current_month).aggregate(total=Sum('total_expense'))['total'] or 0
+        current_month_utilities = UtilityExpense.objects.latest('month').month
     except UtilityExpense.DoesNotExist:
+        current_month_utilities = None
+    
+    if current_month_utilities:
+        total_utilities = UtilityExpense.objects.filter(month=current_month_utilities).aggregate(total=Sum('total_expense'))['total'] or Decimal('0.00')
+    else:
         total_utilities = Decimal('0.00')
+
+    # Apply VAT deduction if VAT is required
+    #vat_required = True  # Assume VAT is required, modify this logic if necessary
+    vat_required = total_yearly_earnings > Decimal('300000')  # VAT threshold
+
+    if vat_required:
+        # VAT deduction calculation for expenses
+        total_monthly_expenses_without_vat = (total_monthly_expenses / Decimal('1.19')).quantize(Decimal('0.01'))
+        total_utilities_without_vat = (total_utilities / Decimal('1.19')).quantize(Decimal('0.01'))
+
+    else:
+        total_monthly_expenses_without_vat = total_monthly_expenses
+        total_utilities_without_vat = total_utilities
+
 
     # Prepare context for the template
     context = {
@@ -278,6 +300,8 @@ def financial_overview(request):
         'vat': vat,
         'total_monthly_expenses': total_monthly_expenses,
         'total_utilities': total_utilities,
+        'total_monthly_expenses_without_vat': total_monthly_expenses_without_vat,
+        'total_utilities_without_vat': total_utilities_without_vat,
     }
 
     return render(request, "houses/financial_overview.html", context)
