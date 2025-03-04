@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import House
 from .models import Booking, MonthlyEarning, UtilityExpense, YearlyEarning, HouseEarning, BookingExpense, MonthlyExpense
-
+from decimal import Decimal
 
 # BookingExpense inline
 class BookingExpenseInline(admin.TabularInline):
@@ -18,18 +18,35 @@ class HouseAdmin(admin.ModelAdmin):
     search_fields = ('name', 'address')
 
 # Customize how the houses are displayed in the admin panel
-class BookingAdmin(admin.ModelAdmin):
-    # Display the house name, address, and price in the list view
-    list_display = ('house', 'start_date','end_date' ,'customer_name','booking_earnings')
 
-  # Add a search bar that allows searching by house name, address, and customer name
-    search_fields = ['house__name', 'house__address', 'customer_name']  # Use double underscore to access related model fields
-    inlines = [BookingExpenseInline]  # Show related BookingExpense inline
+class BookingAdmin(admin.ModelAdmin):
+    list_display = ('house', 'start_date', 'end_date', 'customer_name', 'booking_earnings', 'booking_price_with_vat', 'vat_amount')
+    
+    search_fields = ['house__name', 'house__address', 'customer_name']  
+
+    inlines = [BookingExpenseInline]
+
+    # Calculate price with VAT (total amount including VAT)
+    def booking_price_with_vat(self, obj):
+        if obj.booking_earnings:  # Ensure earnings exist
+            return round(obj.booking_earnings * Decimal('1.19'), 2)  # ✅ Convert 1.19 to Decimal
+        return None  # Return None if no earnings
+
+    booking_price_with_vat.short_description = "Total Price (incl. 19% VAT)"
+
+    # Calculate VAT amount separately
+    def vat_amount(self, obj):
+        if obj.booking_earnings:  # Ensure earnings exist
+            return round(obj.booking_earnings * Decimal('0.19'), 2)  # ✅ Convert 0.19 to Decimal
+        return None
+
+    vat_amount.short_description = "VAT (19%)"
+
 
 
 @admin.register(MonthlyEarning)
 class MonthlyEarningEarningAdmin(admin.ModelAdmin):
-    list_display = ('month_name', 'total_earnings')  # Display month and total earnings
+    list_display = ('month_name', 'total_earnings', 'total_earnings_with_vat')  # Display month and total earnings
     search_fields = ('month_name',)  # Allow search by month name
     list_filter = ('month_name',)  # Filter by month name
 
@@ -40,19 +57,27 @@ admin.site.register(Booking, BookingAdmin)
 
 @admin.register(UtilityExpense)
 class UtilityExpenseAdmin(admin.ModelAdmin):
-    list_display = ('house', 'month', 'year', 'water_expense', 'electricity_expense', 'total_expense')
+    list_display = ('house', 'month', 'year', 'water_expense', 'electricity_expense', 'total_expense', 'vat_deductible')
     list_filter = ('month', 'year', 'house')
-    search_fields = ('house__name',) 
+    search_fields = ('house__name',)
+
+    # Calculate the VAT deductible amount (19% of the total expense)
+    def vat_deductible(self, obj):
+        if obj.total_expense:  # Ensure total_expense exists
+            return round(obj.total_expense * Decimal('0.19'), 2)  # ✅ Convert 0.19 to Decimal
+        return None
+
+    vat_deductible.short_description = "VAT Deductible (19%)"
 
 @admin.register(YearlyEarning)
 class YearlyEarningAdmin(admin.ModelAdmin):
-    list_display = ('year', 'total_earnings')  # Display year and total earnings
+    list_display = ('year', 'total_earnings', 'total_earnings_with_vat')  # Display year and total earnings
     search_fields = ('year',)  # Allow search by year
     list_filter = ('year',)  # Filter by year
 
 @admin.register(HouseEarning)
 class HouseEarningAdmin(admin.ModelAdmin):
-    list_display = ('house', 'month', 'total_price')  # Display house, month, and total price
+    list_display = ('house', 'month', 'total_price', 'total_price_with_vat')  # Display house, month, and total price
     search_fields = ('house__name', 'month')  # Allow search by house name and month
     list_filter = ('month', 'house')  # Filter by month and house
     ordering = ('-month',)  # Order by month in descending order
@@ -60,13 +85,31 @@ class HouseEarningAdmin(admin.ModelAdmin):
 # Customize how the booking expenses are displayed in the admin panel
 @admin.register(BookingExpense)
 class BookingExpenseAdmin(admin.ModelAdmin):
-    list_display = ('booking', 'expense_type', 'amount', 'month', 'year')  # Display booking, expense type, amount, and month/year
-    search_fields = ('booking__house__name', 'booking__customer_name', 'expense_type')  # Search by house name, customer name, and expense type
-    list_filter = ('expense_type', 'month', 'year')  # Filter by expense type, month, and year
-    ordering = ('-year', '-month')  # Order by year and month in descending order
+    list_display = ('booking', 'expense_type', 'amount', 'vat_deductible', 'month', 'year')  # ✅ Added 'vat_deductible'
+    search_fields = ('booking__house__name', 'booking__customer_name', 'expense_type')
+    list_filter = ('expense_type', 'month', 'year')
+    ordering = ('-year', '-month')
+
+    # ✅ Calculate VAT deductible (19% of the amount)
+    def vat_deductible(self, obj):
+        if obj.amount:  # Ensure amount exists
+            return round(obj.amount * Decimal('0.19'), 2)  # ✅ Convert 0.19 to Decimal
+        return None
+
+    vat_deductible.short_description = "VAT Deductible (19%)"  # ✅ Column header in admin panel
+
+
+
 
 @admin.register(MonthlyExpense)
 class MonthlyExpenseAdmin(admin.ModelAdmin):
-    list_display = ('house', 'month', 'year', 'total_expense')
+    list_display = ('house', 'month', 'year', 'total_expense', 'total_expense_with_vat')  # Add the new field
     search_fields = ('house__name', 'month', 'year')
     list_filter = ('year', 'month', 'house')
+
+    def total_expense_with_vat(self, obj):
+        """Custom method to calculate total expense with VAT."""
+        vat_rate = Decimal('0.19')  # Example VAT rate (19%)
+        return obj.total_expense * (1 + vat_rate)  # Assuming 'total_expense' is before VAT
+    total_expense_with_vat.short_description = 'Total Expense with VAT'  # Set column header in admin
+

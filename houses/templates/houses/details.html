@@ -13,6 +13,7 @@
   <p><strong>Start Date:</strong> <span id="start-date">-</span></p>
   <p><strong>End Date:</strong> <span id="end-date">-</span></p>
   <p><strong>Total Price:</strong> $<span id="total-price">0.00</span></p>
+  <p><strong>Price with VAT (19%):</strong> $<span id="total-price-vat">0.00</span></p>
 
   <!-- Booking Form -->
   <form method="POST" id="booking-form">
@@ -109,7 +110,13 @@
 
       if (endDate) {
         let numberOfDays = endDate.diff(selectedDate, 'days') + 1;
-        $('#total-price').text((numberOfDays * pricePerNight).toFixed(2));
+        let totalPrice = numberOfDays * pricePerNight;
+        let vatPrice = totalPrice * 0.19; // Calculate VAT (19%)
+        let totalPriceWithVAT = totalPrice + vatPrice;
+
+        // Update the total price and price with VAT
+        $('#total-price').text(totalPrice.toFixed(2));
+        $('#total-price-vat').text(totalPriceWithVAT.toFixed(2)); // Display price with VAT
       }
     }
   });

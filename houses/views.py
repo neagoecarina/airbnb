@@ -247,10 +247,15 @@ def financial_overview(request):
     # Income tax (PFA - 10%) - For PFA, apply tax to the yearly earnings
     income_tax = round(total_yearly_earnings * Decimal('0.1'), 2)
 
-    # Calculate VAT if required (9% on total yearly earnings for hospitality)
+    # Calculate VAT if required
     if vat_required:
-        vat = round(total_yearly_earnings * Decimal('0.09'), 2)  # 9% VAT for accommodation/hospitality
+        # For PFA, VAT is applied on profit (earnings - expenses)
+        total_yearly_expenses = MonthlyExpense.objects.aggregate(total=Sum('total_expense'))['total'] or Decimal('0.00')
+        total_profit = total_yearly_earnings - total_yearly_expenses
+        vat = round(total_profit * Decimal('0.09'), 2)  # 9% VAT on profit for PFA
     else:
+        total_yearly_expenses = MonthlyExpense.objects.aggregate(total=Sum('total_expense'))['total'] or Decimal('0.00')
+        total_profit = total_yearly_earnings - total_yearly_expenses
         vat = 0.0
 
     # Get the current month
@@ -277,7 +282,7 @@ def financial_overview(request):
         total_utilities = Decimal('0.00')
 
     # Apply VAT deduction if VAT is required
-    vat_required = total_yearly_earnings > Decimal('300000')  # VAT threshold
+    vat_required = total_yearly_earnings > Decimal('300000')  # VAT threshold 300000
 
     if vat_required:
         # VAT deduction calculation for expenses
@@ -299,9 +304,12 @@ def financial_overview(request):
         'total_utilities': total_utilities,
         'total_monthly_expenses_without_vat': total_monthly_expenses_without_vat,
         'total_utilities_without_vat': total_utilities_without_vat,
+        'total_profit': total_profit,  # Make sure this is assigned
+        'total_yearly_expenses': total_yearly_expenses,
     }
 
     return render(request, "houses/financial_overview.html", context)
+
 
 
 from django.shortcuts import render

@@ -96,6 +96,7 @@ class Booking(models.Model):
 
 
 from decimal import Decimal
+
 class MonthlyEarning(models.Model):
     month_name = models.CharField(max_length=7)  # Format: YYYY-MM
     total_earnings = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
@@ -103,11 +104,17 @@ class MonthlyEarning(models.Model):
     def __str__(self):
         return f"Earnings for {self.month_name}"
 
+    @property
+    def total_earnings_with_vat(self):
+        """Calculate total earnings including VAT (assuming 19% VAT)."""
+        return round(self.total_earnings * Decimal('1.19'), 2)
+
     @staticmethod
     def get_or_create_earnings_for_month(month_name):
         # Check if earnings for this month already exist
         earnings, created = MonthlyEarning.objects.get_or_create(month_name=month_name)
         return earnings
+
 from decimal import Decimal   
 class UtilityExpense(models.Model):
     house = models.ForeignKey(House, on_delete=models.CASCADE)
@@ -152,11 +159,17 @@ class YearlyEarning(models.Model):
     def __str__(self):
         return f"Earnings for {self.year}"
 
+    @property
+    def total_earnings_with_vat(self):
+        """Calculate total earnings including VAT (assuming 19% VAT)."""
+        return round(self.total_earnings * Decimal('1.19'), 2)
+
     @staticmethod
     def get_or_create_yearly_earnings(year):
         # Check if earnings for this year already exist
         earnings, created = YearlyEarning.objects.get_or_create(year=year)
         return earnings
+
 
 class HouseEarning(models.Model):
     house = models.ForeignKey(House, on_delete=models.CASCADE, related_name='house_earnings')
@@ -166,11 +179,17 @@ class HouseEarning(models.Model):
     def __str__(self):
         return f"Earnings for {self.house.name} in {self.month}"
 
+    @property
+    def total_price_with_vat(self):
+        """Calculate total price including VAT (assuming 19% VAT)."""
+        return round(self.total_price * Decimal('1.19'), 2)
+
     @staticmethod
     def get_or_create_house_earnings(house, month):
         # Get or create earnings for a specific house and month
         earnings, created = HouseEarning.objects.get_or_create(house=house, month=month)
         return earnings
+
     
 class BookingExpense(models.Model):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE)

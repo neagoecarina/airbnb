@@ -1,255 +1,150 @@
 {% extends 'master.html' %}
 
-
-
 {% block content %}
 
 <div class="container mt-4">
 
   <h2>Financial Overview</h2>
 
-
-
   <!-- Business Mode Toggle -->
-
-  <div class="row">
-
-    <div class="col-md-12">
-
+  <div class="row mb-4">
+    <div class="col-md-12 text-center">
       <div class="form-check form-check-inline">
-
         <input type="radio" id="pfa" name="business_mode" value="PFA" class="form-check-input" checked>
-
         <label class="form-check-label" for="pfa">PFA</label>
-
       </div>
-
       <div class="form-check form-check-inline">
-
         <input type="radio" id="srl" name="business_mode" value="SRL" class="form-check-input">
-
         <label class="form-check-label" for="srl">SRL</label>
-
       </div>
-
     </div>
-
   </div>
-
-
 
   <!-- SRL Employee Dropdown (hidden initially) -->
-
   <div class="row" id="employee-option" style="display: none;">
-
     <div class="col-md-12">
-
       <div class="form-group">
-
         <label for="employees">Number of Employees:</label>
-
         <select id="employees" name="employees" class="form-control">
-
           <option value="0">None</option>
-
           <option value="1">At least One</option>
-
         </select>
-
       </div>
-
     </div>
-
   </div>
 
-
-
-  <!-- Financial Cards -->
-
-  <div class="row">
-
-    <!-- Monthly Earnings -->
-
-    <div class="col-md-4">
-
-      <div class="card text-white bg-primary mb-3">
-
-        <div class="card-header">Total Monthly Earnings</div>
-
-        <div class="card-body">
-
+  <!-- Main Financial Overview Section -->
+  <div class="row mb-4">
+    <!-- Revenue (Earnings) -->
+    <div class="col-md-4 mb-3">
+      <div class="card text-white bg-primary">
+        <div class="card-header text-center">Total Revenue (Earnings)</div>
+        <div class="card-body text-center">
           <h4 class="card-title">
-
-            {% if total_monthly_earnings > 0 %}
-
-              {{ total_monthly_earnings }} RON
-
-            {% else %}
-
-              No data available
-
-            {% endif %}
-
-          </h4>
-
-        </div>
-
-      </div>
-
-    </div>
-
-
-
-    <!-- Yearly Earnings -->
-
-    <div class="col-md-4">
-
-      <div class="card text-white bg-success mb-3">
-
-        <div class="card-header">Total Yearly Earnings</div>
-
-        <div class="card-body">
-
-          <h4 class="card-title">
-
             {% if total_yearly_earnings > 0 %}
-
               {{ total_yearly_earnings }} RON
-
             {% else %}
-
               No data available
-
             {% endif %}
-
           </h4>
-
         </div>
-
       </div>
-
     </div>
 
+    <!-- Total Expenses -->
+    <div class="col-md-4 mb-3">
+      <div class="card text-white bg-danger">
+        <div class="card-header text-center">Total Expenses</div>
+        <div class="card-body text-center">
+          <h4 class="card-title">
+            {% if total_yearly_expenses > 0 %}
+              {{ total_yearly_expenses }} RON
+            {% else %}
+              No data available
+            {% endif %}
+          </h4>
+        </div>
+      </div>
+    </div>
 
+    <!-- Profit (Revenue - Expenses) -->
+    <div class="col-md-4 mb-3">
+      <div class="card text-white bg-success">
+        <div class="card-header text-center">Profit (Revenue - Expenses)</div>
+        <div class="card-body text-center">
+          <h4 class="card-title">
+            {% if total_profit > 0 %}
+              {{ total_profit }} RON
+            {% else %}
+              No data available
+            {% endif %}
+          </h4>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mb-4">
+    <!-- Income Tax -->
+    <div class="col-md-6 mb-3">
+      <div class="card text-white bg-info">
+        <div class="card-header text-center">Income Tax</div>
+        <div class="card-body text-center">
+          <h4 class="card-title">
+            {% if income_tax %}
+              {{ income_tax }} RON
+            {% else %}
+              No data available
+            {% endif %}
+          </h4>
+        </div>
+      </div>
+    </div>
 
     <!-- VAT Status -->
-
-    <div class="col-md-4">
-
-      <div class="card text-white bg-danger mb-3">
-
-        <div class="card-header">VAT Status</div>
-
-        <div class="card-body">
-
-          <h4 class="card-title">
-
+    <div class="col-md-6 mb-3">
+      <div class="card text-white bg-warning">
+        <div class="card-header text-center">VAT Status</div>
+        <div class="card-body text-center">
+          <h4 class="card-title" id="vatStatus">
             {% if vat_required is not None %}
-
               {% if vat_required %}
-
-                You must charge VAT (19%)
-
+                You must charge VAT (9%)
               {% else %}
-
                 No VAT required
-
               {% endif %}
-
             {% else %}
-
               No data available
-
             {% endif %}
-
           </h4>
-
         </div>
-
       </div>
-
     </div>
-
   </div>
 
-
-
-  <!-- Tax Information (Visible based on PFA/SRL selection) -->
-
-  <div class="row">
-
-    <!-- SRL Microenterprise Tax (Visible only if SRL is selected) -->
-
-    <div class="col-md-6" id="micro-tax-srl" style="display: none;">
-
-      <div class="card text-white bg-warning mb-3">
-
-        <div class="card-header">Microenterprise Tax (SRL)</div>
-
-        <div class="card-body">
-
+  <!-- Monthly Statistics Section -->
+  <div class="row mb-4">
+    <!-- Total Monthly Earnings -->
+    <div class="col-md-6 mb-3">
+      <div class="card">
+        <div class="card-header text-center">Total Monthly Earnings</div>
+        <div class="card-body text-center">
           <h4 class="card-title">
-
-            {% if micro_tax %}
-
-              {{ micro_tax }} RON
-
+            {% if total_monthly_earnings > 0 %}
+              {{ total_monthly_earnings }} RON
             {% else %}
-
               No data available
-
             {% endif %}
-
           </h4>
-
         </div>
-
       </div>
-
     </div>
 
-
-
-    <!-- PFA Income Tax (Visible only if PFA is selected) -->
-
-    <div class="col-md-6" id="pfa-tax">
-
-      <div class="card text-white bg-info mb-3">
-
-        <div class="card-header">PFA Income Tax (10%)</div>
-
-        <div class="card-body">
-
-          <h4 class="card-title">
-
-            {% if income_tax %}
-
-              {{ income_tax }} RON
-
-            {% else %}
-
-              No data available
-
-            {% endif %}
-
-          </h4>
-
-        </div>
-
-      </div>
-
-    </div>
-
-  </div>
-
-
-  <!-- Financial Summary Section: Total Monthly Expenses + Total Monthly Utilities -->
-<div class="row">
     <!-- Total Monthly Expenses -->
-    <div class="col-md-6">
-      <div class="card mt-4">
-        <div class="card-header">Total Monthly Expenses</div>
-        <div class="card-body">
+    <div class="col-md-6 mb-3">
+      <div class="card">
+        <div class="card-header text-center">Total Monthly Expenses</div>
+        <div class="card-body text-center">
           <h4 class="card-title">
             {% if vat_required %}
               {{ total_monthly_expenses_without_vat }} RON (Excluding VAT)
@@ -260,12 +155,14 @@
         </div>
       </div>
     </div>
-  
-    <!-- Total Monthly Utilities -->
-    <div class="col-md-6">
-      <div class="card mt-4">
-        <div class="card-header">Total Monthly Utilities</div>
-        <div class="card-body">
+  </div>
+
+  <!-- Monthly Utility Expenses -->
+  <div class="row mb-4">
+    <div class="col-md-6 mb-3">
+      <div class="card">
+        <div class="card-header text-center">Total Monthly Utilities</div>
+        <div class="card-body text-center">
           <h4 class="card-title">
             {% if vat_required %}
               {{ total_utilities_without_vat }} RON (Excluding VAT)
@@ -277,157 +174,105 @@
       </div>
     </div>
   </div>
-  
 
-
-  <!-- Monthly Earnings Chart -->
-
+  <!-- Monthly Earnings Chart (optional) -->
   <div class="card mt-4">
-
     <div class="card-body">
-
       <canvas id="earningsChart"></canvas>
-
     </div>
-
   </div>
 
-
-
-  <script>
-
-    document.addEventListener('DOMContentLoaded', function() {
-
-      const radioButtons = document.querySelectorAll('input[name="business_mode"]');
-
-      const employeeOption = document.getElementById('employee-option');
-
-      const microTaxSrl = document.getElementById('micro-tax-srl');
-
-      const pfaTax = document.getElementById('pfa-tax');
-
-      const vatStatus = document.querySelector('.bg-danger .card-title');
-
-      const employeeSelect = document.getElementById('employees');
-
-
-
-      // Toggle visibility based on business mode selection
-
-      const toggleVisibility = () => {
-
-        const businessMode = document.querySelector('input[name="business_mode"]:checked').value;
-
-
-
-        if (businessMode === 'SRL') {
-
-          employeeOption.style.display = 'block'; // Show employee option for SRL
-
-          microTaxSrl.style.display = 'block'; // Show SRL tax info
-
-          pfaTax.style.display = 'none'; // Hide PFA tax info
-
-        } else {
-
-          employeeOption.style.display = 'none'; // Hide employee option for PFA
-
-          microTaxSrl.style.display = 'none'; // Hide SRL tax info
-
-          pfaTax.style.display = 'block'; // Show PFA tax info
-
-        }
-
-      };
-
-
-
-      // Attach event listeners to business mode radio buttons
-
-      radioButtons.forEach(button => {
-
-        button.addEventListener('change', toggleVisibility);
-
-      });
-
-
-
-      // Initial visibility setup
-
-      toggleVisibility();
-
-
-
-      // Handle number of employees dropdown (for SRL)
-
-      employeeSelect.addEventListener('change', function() {
-
-        const selectedValue = employeeSelect.value;
-
-
-
-        // Send the selected business mode and number of employees to the server for tax calculations
-
-        fetch('/calculate-taxes/', {
-
-          method: 'POST',
-
-          headers: {
-
-            'Content-Type': 'application/json',
-
-          },
-
-          body: JSON.stringify({
-
-            business_mode: document.querySelector('input[name="business_mode"]:checked').value,
-
-            employees: selectedValue
-
-          }),
-
-        })
-
-        .then(response => response.json())
-
-        .then(data => {
-
-          // Update the tax and VAT status based on the server response
-
-          if (data.micro_tax) {
-
-            document.querySelector('#micro-tax-srl .card-title').innerText = `${data.micro_tax} RON`;
-
-          }
-
-          if (data.income_tax) {
-
-            document.querySelector('#pfa-tax .card-title').innerText = `${data.income_tax} RON`;
-
-          }
-
-
-
-          // Update VAT status based on the selected business mode and employee count
-
-          if (data.vat_required !== undefined) {
-
-            vatStatus.innerText = data.vat_required ? "You must charge VAT (19%)" : "No VAT required";
-
-          }
-
-        })
-
-        .catch(err => console.error('Error fetching tax data:', err));
-
-      });
-
-    });
-
-  </script>
-
-
-
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const radioButtons = document.querySelectorAll('input[name="business_mode"]');
+  const employeeOption = document.getElementById('employee-option');
+  const employeeSelect = document.getElementById('employees');
+  const vatStatus = document.getElementById('vatStatus');
+  
+  // Function to check if an element exists before interacting with it
+  const checkElementExistence = (selector) => {
+    const element = document.querySelector(selector);
+    if (!element) {
+      console.error(`Element not found for selector: ${selector}`);
+      return null;
+    }
+    return element;
+  };
+
+  // Handle visibility of employee option based on business mode
+  const toggleEmployeeVisibility = () => {
+    const businessMode = document.querySelector('input[name="business_mode"]:checked')?.value;
+    if (businessMode === 'SRL') {
+      if (employeeOption) {
+        employeeOption.style.display = 'block'; // Show employee option for SRL
+      }
+    } else {
+      if (employeeOption) {
+        employeeOption.style.display = 'none'; // Hide employee option for PFA
+      }
+    }
+  };
+
+  // Event listener for business mode radio buttons
+  radioButtons.forEach(button => {
+    button.addEventListener('change', function () {
+      toggleEmployeeVisibility();
+      handleTaxCalculation(); // Recalculate taxes when mode changes
+    });
+  });
+
+  // Function to handle tax calculation
+  const handleTaxCalculation = (selectedEmployees = 0) => {
+    const businessMode = document.querySelector('input[name="business_mode"]:checked')?.value;
+    console.log('Selected Business Mode:', businessMode);
+    console.log('Selected number of employees:', selectedEmployees);
+
+    // Check if the vatStatus element exists before attempting to update it
+    if (vatStatus) {
+      fetch('/calculate-taxes/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+          business_mode: businessMode,
+          employees: selectedEmployees
+        }),
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log('Tax data response:', data);
+
+        // Update the vatStatus element if it exists
+        if (businessMode === 'PFA') {
+          vatStatus.innerText = `Income Tax: ${data.income_tax || 'N/A'} RON, VAT: ${data.vat || 'N/A'} RON`;
+        } else if (businessMode === 'SRL') {
+          vatStatus.innerText = `Micro Tax: ${data.micro_tax || 'N/A'} RON, VAT: ${data.vat || 'N/A'} RON`;
+        }
+      })
+      .catch(err => {
+        console.error('Error calculating taxes:', err);
+        vatStatus.innerText = 'Error calculating taxes.';
+      });
+    }
+  };
+
+  // Handle number of employees selection
+  if (employeeSelect) {
+    employeeSelect.addEventListener('change', function () {
+      const selectedEmployees = employeeSelect.value;
+      console.log('Selected number of employees:', selectedEmployees);
+      handleTaxCalculation(selectedEmployees);
+    });
+  }
+
+  // Toggle visibility based on initial business mode
+  toggleEmployeeVisibility();
+  handleTaxCalculation(); // Ensure taxes are calculated on page load
+});
+</script>
 
 {% endblock %}
