@@ -210,105 +210,6 @@ def add_utility_expenses(request):
         'years': years,
     })
 
-from django.shortcuts import render
-from decimal import Decimal
-from .models import MonthlyEarning, YearlyEarning, UtilityExpense, HouseEarning, MonthlyExpense
-import json
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Sum
-
-def financial_overview(request):
-    # Get the latest monthly and yearly earnings or set defaults if no entries
-    try:
-        total_monthly_earnings = MonthlyEarning.objects.latest('month_name').total_earnings
-    except MonthlyEarning.DoesNotExist:
-        total_monthly_earnings = Decimal('0.00')
-
-    try:
-        total_yearly_earnings = YearlyEarning.objects.latest('year').total_earnings
-    except YearlyEarning.DoesNotExist:
-        total_yearly_earnings = Decimal('0.00')
-
-    # Check VAT threshold (if total yearly earnings exceed the VAT registration threshold)
-    vat_required = total_yearly_earnings > Decimal('300000')  # VAT threshold (300,000 RON)
-
-    # Microenterprise tax (SRL)
-    num_employees = 0  # Default, dynamically set as needed
-
-    # Calculate Microenterprise tax based on the number of employees
-    if num_employees == 0:
-        micro_tax_rate = Decimal('0.01')  # 1% tax rate for SRL without employees
-    else:
-        micro_tax_rate = Decimal('0.03')  # 3% tax rate for SRL with employees
-
-    micro_tax = round(total_monthly_earnings * micro_tax_rate, 2)
-
-    # Income tax (PFA - 10%) - For PFA, apply tax to the yearly earnings
-    income_tax = round(total_yearly_earnings * Decimal('0.1'), 2)
-
-    # Calculate VAT if required
-    if vat_required:
-        # For PFA, VAT is applied on profit (earnings - expenses)
-        total_yearly_expenses = MonthlyExpense.objects.aggregate(total=Sum('total_expense'))['total'] or Decimal('0.00')
-        total_profit = total_yearly_earnings - total_yearly_expenses
-        vat = round(total_profit * Decimal('0.09'), 2)  # 9% VAT on profit for PFA
-    else:
-        total_yearly_expenses = MonthlyExpense.objects.aggregate(total=Sum('total_expense'))['total'] or Decimal('0.00')
-        total_profit = total_yearly_earnings - total_yearly_expenses
-        vat = 0.0
-
-    # Get the current month
-    try:
-        current_month = MonthlyExpense.objects.latest('month').month
-    except MonthlyExpense.DoesNotExist:
-        current_month = None
-
-    # Get total monthly expenses for the current month or set to 0 if no entries
-    if current_month:
-        total_monthly_expenses = MonthlyExpense.objects.filter(month=current_month).aggregate(total=Sum('total_expense'))['total'] or Decimal('0.00')
-    else:
-        total_monthly_expenses = Decimal('0.00')
-
-    # Get total utility expenses for the current month or set to 0 if no entries
-    try:
-        current_month_utilities = UtilityExpense.objects.latest('month').month
-    except UtilityExpense.DoesNotExist:
-        current_month_utilities = None
-    
-    if current_month_utilities:
-        total_utilities = UtilityExpense.objects.filter(month=current_month_utilities).aggregate(total=Sum('total_expense'))['total'] or Decimal('0.00')
-    else:
-        total_utilities = Decimal('0.00')
-
-    # Apply VAT deduction if VAT is required
-    vat_required = total_yearly_earnings > Decimal('300000')  # VAT threshold 300000
-
-    if vat_required:
-        # VAT deduction calculation for expenses
-        total_monthly_expenses_without_vat = (total_monthly_expenses / Decimal('1.09')).quantize(Decimal('0.01'))
-        total_utilities_without_vat = (total_utilities / Decimal('1.09')).quantize(Decimal('0.01'))
-    else:
-        total_monthly_expenses_without_vat = total_monthly_expenses
-        total_utilities_without_vat = total_utilities
-
-    # Prepare context for the template
-    context = {
-        'total_monthly_earnings': total_monthly_earnings,
-        'total_yearly_earnings': total_yearly_earnings,
-        'vat_required': vat_required,
-        'micro_tax': micro_tax,
-        'income_tax': income_tax,
-        'vat': vat,
-        'total_monthly_expenses': total_monthly_expenses,
-        'total_utilities': total_utilities,
-        'total_monthly_expenses_without_vat': total_monthly_expenses_without_vat,
-        'total_utilities_without_vat': total_utilities_without_vat,
-        'total_profit': total_profit,  # Make sure this is assigned
-        'total_yearly_expenses': total_yearly_expenses,
-    }
-
-    return render(request, "houses/financial_overview.html", context)
 
 
 
@@ -318,7 +219,76 @@ from .models import MonthlyEarning, YearlyEarning, MonthlyExpense
 import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+
+
+from django.shortcuts import render
 from django.db.models import Sum
+from .models import MonthlyEarning, House, MonthlyExpense, UtilityExpense, HouseEarning, BookingExpense
+from django.utils import timezone
+
+
+from django.db.models import Sum
+from datetime import datetime
+from decimal import Decimal
+def financial_overview(request):
+    # Get the current month and year
+    current_month = datetime.now().month
+    current_year = datetime.now().year
+
+    # Get total earnings for the current month
+    total_earnings = MonthlyEarning.objects.filter(month_name=f'{current_year}-{current_month:02d}').aggregate(Sum('total_earnings'))['total_earnings__sum'] or 0.00
+
+    # Convert total_earnings to Decimal to avoid type errors when performing calculations
+    total_earnings_decimal = Decimal(total_earnings)
+
+    # Calculate total VAT collected (19% of total earnings)
+    total_vat_collected = total_earnings_decimal * Decimal('0.19')
+
+    # Get total expenses from MonthlyExpense for the current month and year
+    # Update the filter to use date__month and date__year
+    total_expenses = MonthlyExpense.objects.filter(
+        date__month=current_month, 
+        date__year=current_year
+    ).aggregate(Sum('total_expense'))['total_expense__sum'] or 0.00
+
+
+    # Get total utility expenses for the current month and year
+    total_utility_expenses = UtilityExpense.objects.filter(year=current_year, month=current_month).aggregate(Sum('total_expense'))['total_expense__sum'] or 0.00
+
+    # Get total booking expenses for the current month and year
+    total_booking_expenses = BookingExpense.objects.filter(year=current_year, month=current_month).aggregate(Sum('amount'))['amount__sum'] or 0.00
+
+    # Combine all expenses
+    # Assuming total_expenses, total_utility_expenses, and total_booking_expenses are the values being calculated.
+    total_net_expenses = Decimal(total_expenses) + Decimal(total_utility_expenses) + Decimal(total_booking_expenses)
+    # Calculate net earnings (total earnings - total expenses)
+    total_net_earnings = total_earnings_decimal - Decimal(total_net_expenses)
+
+    # Calculate average earnings per house for the current month
+    houses = House.objects.all()
+    total_earnings_per_house = 0.00
+    for house in houses:
+        house_earnings = HouseEarning.objects.filter(house=house, month=f'{current_year}-{current_month:02d}').aggregate(Sum('total_price'))['total_price__sum'] or 0.00
+        total_earnings_per_house += house_earnings
+
+    avg_earnings_per_house = total_earnings_per_house / len(houses) if len(houses) > 0 else 0.00
+
+    # Get total VAT deductible (e.g., assume 19% for simplicity on total expenses)
+    total_vat_deductible = total_net_expenses * Decimal('0.19')
+    # Pass all data to the template
+    return render(request, 'houses/financial_overview.html', {
+        'total_earnings': total_earnings_decimal,
+        'total_expenses': total_expenses,
+        'total_utility_expenses': total_utility_expenses,
+        'total_booking_expenses': total_booking_expenses,
+        'total_net_earnings': total_net_earnings,
+        'avg_earnings_per_house': avg_earnings_per_house,
+        'total_vat_collected': total_vat_collected,
+        'total_vat_deductible': total_vat_deductible,
+        'houses': houses,
+        'total_net_expenses': total_net_expenses,
+    })
+
 
 @csrf_exempt
 def calculate_taxes(request):

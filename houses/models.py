@@ -17,9 +17,9 @@ class House(models.Model):
     def __str__(self):
         return self.name
 
-from django.db import models
-from django.utils import timezone
+
 from decimal import Decimal
+from datetime import date
 from django.db import transaction
 
 class Booking(models.Model):
@@ -33,66 +33,64 @@ class Booking(models.Model):
     def __str__(self):
         return f"Booking for {self.house.name} by {self.customer_name}"
 
+    from decimal import Decimal
+
     def save(self, *args, **kwargs):
-                try:
-                        with transaction.atomic():
-                                print("Starting save operation.")
-                                # Ensure price_per_night is a Decimal before calculation
-                                price_per_night = Decimal(self.house.price)  # Convert to Decimal
-                                total_days = (self.end_date - self.start_date).days + 1
-                                print(f"Total Days: {total_days}")  # Debugging line
+      try:
+        with transaction.atomic():
+            print("Starting save operation.")
+            
+            # Ensure price_per_night is a Decimal before calculation
+            price_per_night = Decimal(self.house.price)
+            total_days = (self.end_date - self.start_date).days + 1  # Include the start day
+            print(f"Total Days: {total_days}")  # Debugging line
 
-                                # Calculate booking earnings as Decimal
-                                self.booking_earnings = Decimal(total_days * price_per_night)  # Ensure result is Decimal
-                                print(f"Calculated Booking Earnings: {self.booking_earnings}")  # Debugging line
+            # Calculate booking earnings
+            self.booking_earnings = Decimal(total_days * price_per_night)
+            print(f"Calculated Booking Earnings: {self.booking_earnings}")  # Debugging line
 
-                                # Save the booking first
-                                super().save(*args, **kwargs)
-                                print("Booking saved successfully.")
+            # Save the booking first
+            super().save(*args, **kwargs)
+            print("Booking saved successfully.")
 
-                                # Create the Cleaning Fee Expense for the booking
-                                BookingExpense.objects.create(
-                                        booking=self,
-                                        expense_type="Cleaning Fee",
-                                        amount=self.cleaning_fee,
-                                        month=self.start_date.month,
-                                        year=self.start_date.year
-                                )
-                                print("Cleaning fee expense created.")
+            # Ensure the booking is saved and has a primary key
+            if not self.pk:
+                raise Exception("Booking wasn't saved. No primary key (pk) set.")
 
-                                # Get or create the MonthlyExpense for the house and month
-                                month_name = self.start_date.strftime("%Y-%m")
-                                year = self.start_date.year
-                                print(f"Month/Year for MonthlyExpense: {month_name}/{year}")
+            # Create the Cleaning Fee Expense for the booking
+            BookingExpense.objects.create(
+                booking=self,
+                expense_type="Cleaning Fee",
+                amount=self.cleaning_fee,
+                month=self.start_date.month,
+                year=self.start_date.year
+            )
+            print("Cleaning fee expense created.")
 
-                                # Update MonthlyExpense (handling cleaning fee)
-                                monthly_expense, created = MonthlyExpense.objects.get_or_create(house=self.house, month=month_name, year=year)
-                                monthly_expense.total_expense = Decimal(monthly_expense.total_expense) + Decimal(self.cleaning_fee) 
-                                monthly_expense.save()
-                                print("Monthly expense updated.")
+            # Get or create the MonthlyEarning for the month and house
+            first_day_of_month = date(self.start_date.year, self.start_date.month, 1)
+            monthly_earnings = MonthlyEarning.get_or_create_earnings_for_month(first_day_of_month.strftime("%Y-%m"))
+            monthly_earnings.total_earnings += self.booking_earnings
+            monthly_earnings.save()
+            print("Monthly earnings updated.")
 
-                                # Update MonthlyEarnings (for the current month)
-                                earnings = MonthlyEarning.get_or_create_earnings_for_month(month_name)
-                                earnings.total_earnings =Decimal(earnings.total_earnings) + Decimal(self.booking_earnings)
-                                earnings.save()
-                                print("Monthly earnings updated.")
+            # Get or create the YearlyEarnings for the year and house
+            yearly_earnings = YearlyEarning.get_or_create_yearly_earnings(str(self.start_date.year))
+            # Ensure total_earnings is a Decimal before adding
+            yearly_earnings.total_earnings = Decimal(yearly_earnings.total_earnings)  # Convert to Decimal if it's a float
+            yearly_earnings.total_earnings += self.booking_earnings
+            yearly_earnings.save()
+            print("Yearly earnings updated.")
 
-                                # Update YearlyEarnings (for the current year)
-                                yearly_earnings = YearlyEarning.get_or_create_yearly_earnings(str(year))
-                                yearly_earnings.total_earnings = Decimal(yearly_earnings.total_earnings) + Decimal(self.booking_earnings)
-                                yearly_earnings.save()
-                                print("Yearly earnings updated.")
+            # Get or create the HouseEarnings for the house and month
+            house_earnings = HouseEarning.get_or_create_house_earnings(self.house, first_day_of_month)
+            house_earnings.total_price += self.booking_earnings
+            house_earnings.save()
+            print("House earnings updated.")
 
-                                # Update HouseEarnings (for the house and current month)
-                                house_earnings = HouseEarning.get_or_create_house_earnings(self.house, month_name)
-                                house_earnings.total_price =Decimal(house_earnings.total_price) + Decimal(self.booking_earnings)  # Already Decimal
-                                house_earnings.save()
-                                print("House earnings updated.")
-
-                except Exception as e:
-                        print(f"Error during transaction: {e}")
-                        raise  # Reraise the exception after logging
-
+      except Exception as e:
+        print(f"Error during transaction: {e}")
+        raise  # Ensure the exception is raised to avoid silent failures
 
 
 from decimal import Decimal
@@ -116,6 +114,10 @@ class MonthlyEarning(models.Model):
         return earnings
 
 from decimal import Decimal   
+from decimal import Decimal
+from datetime import datetime
+from django.db import models
+from django.utils import timezone
 class UtilityExpense(models.Model):
     house = models.ForeignKey(House, on_delete=models.CASCADE)
     year = models.IntegerField(default=datetime.now().year)
@@ -125,22 +127,23 @@ class UtilityExpense(models.Model):
     total_expense = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     def save(self, *args, **kwargs):
+        # Calculate total expense from water and electricity
         self.total_expense = self.water_expense + self.electricity_expense
         super().save(*args, **kwargs)
 
-        # Get the month name (YYYY-MM)
-        month_name = f"{self.year}-{str(self.month).zfill(2)}"  # Format YYYY-MM
+        # Create the month_name for MonthlyExpense (e.g., "03-2025")
+        month_name = f"{str(self.month).zfill(2)}-{self.year}"
 
         try:
-            # Try to fetch existing MonthlyExpense
-            monthly_expense = MonthlyExpense.objects.filter(house=self.house, month=month_name, year=self.year).first()
+            # Try to fetch existing MonthlyExpense by year and month
+            monthly_expense = MonthlyExpense.objects.filter(house=self.house, month=self.month, year=self.year).first()
 
             if not monthly_expense:
                 # If no MonthlyExpense exists, create it
                 monthly_expense = MonthlyExpense.objects.create(
                     house=self.house,
-                    month=month_name,
-                    year=self.year,
+                    month=self.month,  # Store month as integer
+                    year=self.year,    # Store year as integer
                     total_expense=self.total_expense
                 )
             else:
@@ -150,7 +153,6 @@ class UtilityExpense(models.Model):
 
         except Exception as e:
             print(f"Error while updating MonthlyExpense: {e}")
-
 
 class YearlyEarning(models.Model):
     year = models.CharField(max_length=4)  # Format: YYYY
@@ -171,13 +173,16 @@ class YearlyEarning(models.Model):
         return earnings
 
 
+from django.utils import timezone
+from decimal import Decimal
+
 class HouseEarning(models.Model):
     house = models.ForeignKey(House, on_delete=models.CASCADE, related_name='house_earnings')
-    month = models.CharField(max_length=7)  # Format: YYYY-MM
-    total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    month = models.DateField()  # Store the date (e.g., first day of the month)
+    total_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
 
     def __str__(self):
-        return f"Earnings for {self.house.name} in {self.month}"
+        return f"Earnings for {self.house.name} in {self.month.strftime('%B %Y')}"
 
     @property
     def total_price_with_vat(self):
@@ -187,9 +192,11 @@ class HouseEarning(models.Model):
     @staticmethod
     def get_or_create_house_earnings(house, month):
         # Get or create earnings for a specific house and month
-        earnings, created = HouseEarning.objects.get_or_create(house=house, month=month)
+        earnings, created = HouseEarning.objects.get_or_create(
+            house=house, 
+            month=month
+        )
         return earnings
-
     
 class BookingExpense(models.Model):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE)
@@ -200,12 +207,13 @@ class BookingExpense(models.Model):
 
     def __str__(self):
         return f"{self.expense_type} for {self.booking.house.name} in {self.month}/{self.year}"
-
+    
 class MonthlyExpense(models.Model):
     house = models.ForeignKey(House, on_delete=models.CASCADE)
-    month = models.CharField(max_length=7)  # Format: YYYY-MM
-    year = models.IntegerField()
+    date = models.DateField(default=timezone.now)
     total_expense = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
     def __str__(self):
-        return f"Total Expenses for {self.house.name} in {self.month}"
+        return f"Total Expenses for {self.house.name} in {self.date.strftime('%Y-%m')}"
+
+

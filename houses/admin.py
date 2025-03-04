@@ -101,15 +101,34 @@ class BookingExpenseAdmin(admin.ModelAdmin):
 
 
 
+from decimal import Decimal
+
+from django.contrib import admin
+from decimal import Decimal
+from .models import MonthlyExpense
+
+from django.utils import timezone
+
 @admin.register(MonthlyExpense)
 class MonthlyExpenseAdmin(admin.ModelAdmin):
-    list_display = ('house', 'month', 'year', 'total_expense', 'total_expense_with_vat')  # Add the new field
-    search_fields = ('house__name', 'month', 'year')
-    list_filter = ('year', 'month', 'house')
+    list_display = ('house', 'formatted_month', 'total_expense', 'total_expense_with_vat')
+    search_fields = ('house__name', 'date')  # Update to search by 'date'
+    list_filter = ('date', 'house')  # Update to filter by 'date'
+
+    def formatted_month(self, obj):
+        """Custom method to display the month as YYYY-MM."""
+        return obj.date.strftime('%Y-%m')  # Use the 'date' field to display as YYYY-MM
+    formatted_month.admin_order_field = 'date'  # Allow sorting by 'date'
+    formatted_month.short_description = 'Month'  # Label in the admin
 
     def total_expense_with_vat(self, obj):
         """Custom method to calculate total expense with VAT."""
         vat_rate = Decimal('0.19')  # Example VAT rate (19%)
-        return obj.total_expense * (1 + vat_rate)  # Assuming 'total_expense' is before VAT
-    total_expense_with_vat.short_description = 'Total Expense with VAT'  # Set column header in admin
+        # Convert total_expense to Decimal if it's a float
+        total_expense = Decimal(obj.total_expense)  # Ensure total_expense is Decimal
+        total = total_expense * (1 + vat_rate)  # Perform multiplication
+        return round(total, 2)  # Round the result to 2 decimal places
+
+    total_expense_with_vat.short_description = 'Total Expense with VAT'
+
 
