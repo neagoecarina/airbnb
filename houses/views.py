@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
-from .models import House, Booking, UtilityExpense,MonthlyEarning, YearlyEarning, HouseEarning
+from .models import House, Booking, UtilityExpense,MonthlyEarning, YearlyEarning, HouseEarning, MonthlyExpense
 from datetime import datetime, timedelta
 import json
 from django.views.decorators.csrf import csrf_exempt
@@ -212,7 +212,7 @@ def add_utility_expenses(request):
 
 from django.shortcuts import render
 from decimal import Decimal
-from .models import MonthlyEarning, YearlyEarning, UtilityExpense, HouseEarning
+from .models import MonthlyEarning, YearlyEarning, UtilityExpense, HouseEarning, MonthlyExpense
 import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -253,7 +253,15 @@ def financial_overview(request):
     else:
         vat = 0.0
 
-    # Get total utility expenses for the current month or set to 0 if no entries
+    # Get total monthly expenses for the current month or set to 0 if no entries
+    try:
+        current_month = MonthlyExpense.objects.latest('month').month
+        total_monthly_expenses  = MonthlyExpense.objects.filter(month=current_month).aggregate(total=Sum('total_expense'))['total'] or 0
+    except MonthlyExpense.DoesNotExist:
+        total_monthly_expenses  = Decimal('0.00')
+
+    # Get total utility expenses for the current month or set to 0 if no entries 
+
     try:
         current_month = UtilityExpense.objects.latest('month').month
         total_utilities = UtilityExpense.objects.filter(month=current_month).aggregate(total=Sum('total_expense'))['total'] or 0
@@ -268,6 +276,7 @@ def financial_overview(request):
         'micro_tax': micro_tax,
         'income_tax': income_tax,
         'vat': vat,
+        'total_monthly_expenses': total_monthly_expenses,
         'total_utilities': total_utilities,
     }
 

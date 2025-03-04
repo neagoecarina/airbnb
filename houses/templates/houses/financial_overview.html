@@ -121,19 +121,41 @@
     </div>
   </div>
 
-  <!-- Utility Expenses -->
-  <div class="card mt-4">
-    <div class="card-header">Total Utility Expenses This Month</div>
-    <div class="card-body">
-      <h4 class="card-title">
-        {% if total_utilities %}
-          {{ total_utilities }} RON
-        {% else %}
-          No data available
-        {% endif %}
-      </h4>
+  <!-- Financial Summary Section: Total Monthly Expenses + Total Monthly Utilities -->
+  <div class="row">
+    <!-- Total Monthly Expenses -->
+    <div class="col-md-6">
+      <div class="card mt-4">
+        <div class="card-header">Total Monthly Expenses</div>
+        <div class="card-body">
+          <h4 class="card-title">
+            {% if total_monthly_expenses %}
+              {{ total_monthly_expenses }} RON
+            {% else %}
+              No data available
+            {% endif %}
+          </h4>
+        </div>
+      </div>
+    </div>
+
+    <!-- Total Monthly Utilities -->
+    <div class="col-md-6">
+      <div class="card mt-4">
+        <div class="card-header">Total Monthly Utilities</div>
+        <div class="card-body">
+          <h4 class="card-title">
+            {% if total_utilities  %}
+              {{ total_utilities  }} RON
+            {% else %}
+              No data available
+            {% endif %}
+          </h4>
+        </div>
+      </div>
     </div>
   </div>
+
 
   <!-- Monthly Earnings Chart -->
   <div class="card mt-4">
