@@ -231,7 +231,7 @@ def financial_overview(request):
         total_yearly_earnings = Decimal('0.00')
 
     # Check VAT threshold (if total yearly earnings exceed the VAT registration threshold)
-    vat_required = total_yearly_earnings > Decimal('300000')  # VAT threshold# VAT threshold (300,000 RON)
+    vat_required = total_yearly_earnings > Decimal('300000')  # VAT threshold (300,000 RON)
 
     # Microenterprise tax (SRL)
     num_employees = 0  # Default, dynamically set as needed
@@ -247,13 +247,13 @@ def financial_overview(request):
     # Income tax (PFA - 10%) - For PFA, apply tax to the yearly earnings
     income_tax = round(total_yearly_earnings * Decimal('0.1'), 2)
 
-    # Calculate VAT if required (9% on total yearly earnings)
+    # Calculate VAT if required (9% on total yearly earnings for hospitality)
     if vat_required:
-        vat = round(total_yearly_earnings * Decimal('0.09'), 2)
+        vat = round(total_yearly_earnings * Decimal('0.09'), 2)  # 9% VAT for accommodation/hospitality
     else:
         vat = 0.0
 
-# Get the current month
+    # Get the current month
     try:
         current_month = MonthlyExpense.objects.latest('month').month
     except MonthlyExpense.DoesNotExist:
@@ -277,18 +277,15 @@ def financial_overview(request):
         total_utilities = Decimal('0.00')
 
     # Apply VAT deduction if VAT is required
-    #vat_required = True  # Assume VAT is required, modify this logic if necessary
     vat_required = total_yearly_earnings > Decimal('300000')  # VAT threshold
 
     if vat_required:
         # VAT deduction calculation for expenses
-        total_monthly_expenses_without_vat = (total_monthly_expenses / Decimal('1.19')).quantize(Decimal('0.01'))
-        total_utilities_without_vat = (total_utilities / Decimal('1.19')).quantize(Decimal('0.01'))
-
+        total_monthly_expenses_without_vat = (total_monthly_expenses / Decimal('1.09')).quantize(Decimal('0.01'))
+        total_utilities_without_vat = (total_utilities / Decimal('1.09')).quantize(Decimal('0.01'))
     else:
         total_monthly_expenses_without_vat = total_monthly_expenses
         total_utilities_without_vat = total_utilities
-
 
     # Prepare context for the template
     context = {
@@ -306,7 +303,15 @@ def financial_overview(request):
 
     return render(request, "houses/financial_overview.html", context)
 
-# API to calculate taxes dynamically for PFA or SRL
+
+from django.shortcuts import render
+from decimal import Decimal
+from .models import MonthlyEarning, YearlyEarning, MonthlyExpense
+import json
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Sum
+
 @csrf_exempt
 def calculate_taxes(request):
     # Get the latest monthly and yearly earnings or set defaults if no entries
@@ -320,34 +325,50 @@ def calculate_taxes(request):
     except YearlyEarning.DoesNotExist:
         total_yearly_earnings = Decimal('0.00')
 
+    # Fetch total yearly expenses for PFA (from MonthlyExpense)
+    try:
+        total_yearly_expenses = MonthlyExpense.objects.aggregate(total=Sum('total_expense'))['total'] or Decimal('0.00')
+    except MonthlyExpense.DoesNotExist:
+        total_yearly_expenses = Decimal('0.00')
+
     if request.method == 'POST':
         data = json.loads(request.body)
         business_mode = data.get('business_mode')
         num_employees = int(data.get('employees', 0))
 
-        # Calculate tax values based on business mode
+        # Initialize response data dictionary
         response_data = {}
 
         if business_mode == 'PFA':
-            # Calculate tax for PFA (10% income tax)
-            total_income = total_yearly_earnings  # Use actual total yearly earnings for PFA
-            income_tax = total_income * Decimal('0.1')  # 10% income tax for PFA
-            vat = total_income * Decimal('0.09')  # 9% VAT for PFA
+            # Calculate net profit (earnings - expenses)
+            total_profit = total_yearly_earnings - total_yearly_expenses
+
+            # Apply income tax (10% on profit) for PFA
+            income_tax = total_profit * Decimal('0.1')  # 10% income tax
+
+            # Apply VAT (9% on profit) for PFA
+            vat = total_profit * Decimal('0.09')  # 9% VAT on profit
+
+            # Prepare response data for PFA
             response_data = {
                 'income_tax': income_tax.quantize(Decimal('0.01')),
                 'vat': vat.quantize(Decimal('0.01'))
             }
 
         elif business_mode == 'SRL':
-            total_income = total_monthly_earnings  # Use actual total monthly earnings for SRL
+            # Use total monthly earnings for SRL
+            total_income = total_monthly_earnings
 
-            # Determine the correct microenterprise tax rate (1% or 3%)
+            # Determine microenterprise tax rate based on number of employees (1% or 3%)
             if num_employees == 0:
                 micro_tax = total_income * Decimal('0.01')  # 1% tax rate for SRL without employees
             else:
                 micro_tax = total_income * Decimal('0.03')  # 3% tax rate for SRL with employees
 
+            # Apply VAT (9% on monthly earnings) for SRL
             vat = total_income * Decimal('0.09')  # 9% VAT for SRL
+
+            # Prepare response data for SRL
             response_data = {
                 'micro_tax': micro_tax.quantize(Decimal('0.01')),
                 'vat': vat.quantize(Decimal('0.01'))
@@ -355,4 +376,3 @@ def calculate_taxes(request):
 
         # Return the JSON response with calculated taxes
         return JsonResponse(response_data)
-
