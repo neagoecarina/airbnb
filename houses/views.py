@@ -913,3 +913,98 @@ def generate_pdf_report(request):
     response['Content-Disposition'] = 'attachment; filename="financial_overview_report.pdf"'
 
     return response
+
+from django.shortcuts import render, get_object_or_404
+from django.utils import timezone
+from .models import Booking
+from decimal import Decimal
+
+def booking_list(request):
+    bookings = Booking.objects.all()  # Fetch all bookings
+    
+    return render(request, 'houses/booking_list.html', {'bookings': bookings})
+
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
+from .models import Booking
+from decimal import Decimal
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from datetime import datetime
+
+def generate_invoice(request, booking_id):
+    # Fetch the booking based on the provided booking ID
+    booking = get_object_or_404(Booking, id=booking_id)
+    
+    # Get the booking price (excluding VAT)
+    price_excl_vat = booking.booking_earnings
+
+    # VAT rate (19%)
+    vat_rate = Decimal('0.19')
+
+    # Calculate price including VAT
+    price_incl_vat = price_excl_vat * (Decimal('1') + vat_rate)
+
+    # Calculate the number of nights (including the start day)
+    total_days = (booking.end_date - booking.start_date).days + 1
+    
+    # Create the PDF response
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="invoice_{booking.id}.pdf"'
+
+    # Create the PDF using ReportLab
+    p = canvas.Canvas(response, pagesize=letter)
+    
+    # Set up basic font styles
+    p.setFont("Helvetica-Bold", 14)
+    
+    # Add Company Info (Header)
+    p.drawString(100, 750, "Your Company Name")
+    p.setFont("Helvetica", 10)
+    p.drawString(100, 735, "Your Address Line 1")
+    p.drawString(100, 720, "Your Address Line 2")
+    p.drawString(100, 705, "City, Postal Code")
+    p.drawString(100, 690, "Email: your@email.com | Phone: +123456789")
+    
+    # Add a horizontal line to separate header from the rest of the content
+    p.setStrokeColor(colors.black)
+    p.setLineWidth(1)
+    p.line(100, 680, 500, 680)
+
+    # Add Invoice Title
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(100, 660, "Invoice")
+
+    # Add Invoice Number and Date
+    p.setFont("Helvetica", 10)
+    p.drawString(400, 660, f"Invoice Number: {booking.id}")
+    p.drawString(400, 645, f"Invoice Date: {datetime.now().strftime('%Y-%m-%d')}")
+
+    # Add Booking Details
+    p.setFont("Helvetica", 12)
+    p.drawString(100, 620, f"Booking ID: {booking.id}")
+    p.drawString(100, 600, f"Customer Name: {booking.customer_name}")
+    p.drawString(100, 580, f"Start Date: {booking.start_date}")
+    p.drawString(100, 560, f"End Date: {booking.end_date}")
+    
+    # Add Description of Service with Number of Nights
+    p.drawString(100, 540, f"Description: Accommodation at {booking.house.name} for {total_days} nights ({booking.start_date} to {booking.end_date})")
+
+    # Add Price with VAT
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(100, 510, f"Price (Including VAT):")
+    p.setFont("Helvetica", 12)
+    p.drawString(250, 510, f"{price_incl_vat:.2f}")
+
+    # Add a footer with a thank you note or website (Optional)
+    p.setFont("Helvetica", 10)
+    p.drawString(100, 100, "Thank you for your business! Visit our website at www.yourcompany.com")
+
+    # Finalize the PDF
+    p.showPage()
+    p.save()
+
+    return response
+
+

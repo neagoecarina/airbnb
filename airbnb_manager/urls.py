@@ -51,6 +51,8 @@ urlpatterns = [
 
     path('export/csv/', views.export_to_csv, name='export_to_csv'),
     path('export/excel/', views.export_to_excel, name='export_to_excel'),
-    
     path('generate_pdf_report/', views.generate_pdf_report, name='generate_pdf_report'),
+
+    path('bookings/', views.booking_list, name='booking_list'),
+    path('generate_invoice/<int:booking_id>/', views.generate_invoice, name='generate_invoice'),
 ]
