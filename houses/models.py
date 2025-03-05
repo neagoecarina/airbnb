@@ -73,8 +73,7 @@ class Booking(models.Model):
                         booking=self,
                         expense_type="Cleaning Fee",
                         amount=self.cleaning_fee,
-                        month=self.start_date.month,
-                        year=self.start_date.year
+                        date=self.start_date  # Pass full date here
                 )
                 print(f"✅ Cleaning fee expense created: {booking_expense.amount}")
 
@@ -87,8 +86,8 @@ class Booking(models.Model):
                 # Sum all cleaning fees for this house and month
                 total_booking_expenses = BookingExpense.objects.filter(
                         booking__house=self.house,
-                        month=self.start_date.month,
-                        year=self.start_date.year
+                        date__year=self.start_date.year,  # Use `date__year`
+                        date__month=self.start_date.month  # Use `date__month`
                 ).aggregate(total=Sum('amount'))['total'] or 0
 
                 # Sum all utility expenses for this house and month
@@ -249,15 +248,17 @@ class HouseEarning(models.Model):
         )
         return earnings
     
+from django.db import models
+
 class BookingExpense(models.Model):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE)
     expense_type = models.CharField(max_length=255, default="Cleaning Fee")
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    month = models.IntegerField()  # month of the booking
-    year = models.IntegerField()  # year of the booking
+    date = models.DateField(default=timezone.now)  # Default to current date
 
     def __str__(self):
-        return f"{self.expense_type} for {self.booking.house.name} in {self.month}/{self.year}"
+        return f"{self.expense_type} for {self.booking.house.name} in {self.date.strftime('%m/%Y')}"
+
     
 class MonthlyExpense(models.Model):
     house = models.ForeignKey(House, on_delete=models.CASCADE)

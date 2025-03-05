@@ -284,6 +284,9 @@ from django.utils import timezone
 from django.db.models import Sum
 from datetime import datetime
 from decimal import Decimal
+from django.db.models import Sum
+from datetime import datetime
+
 def financial_overview(request):
     # Get the current month and year
     current_month = datetime.now().month
@@ -299,22 +302,20 @@ def financial_overview(request):
     total_vat_collected = total_earnings_decimal * Decimal('0.19')
 
     # Get total expenses from MonthlyExpense for the current month and year
-    # Update the filter to use date__month and date__year
     total_expenses = MonthlyExpense.objects.filter(
         date__month=current_month, 
         date__year=current_year
     ).aggregate(Sum('total_expense'))['total_expense__sum'] or 0.00
 
-
     # Get total utility expenses for the current month and year
-    total_utility_expenses = UtilityExpense.objects.filter(year=current_year, month=current_month).aggregate(Sum('total_expense'))['total_expense__sum'] or 0.00
+    total_utility_expenses = UtilityExpense.objects.filter(date__month=current_month, date__year=current_year).aggregate(Sum('total_expense'))['total_expense__sum'] or 0.00
 
     # Get total booking expenses for the current month and year
-    total_booking_expenses = BookingExpense.objects.filter(year=current_year, month=current_month).aggregate(Sum('amount'))['amount__sum'] or 0.00
+    total_booking_expenses = BookingExpense.objects.filter(date__month=current_month, date__year=current_year).aggregate(Sum('amount'))['amount__sum'] or 0.00
 
     # Combine all expenses
-    # Assuming total_expenses, total_utility_expenses, and total_booking_expenses are the values being calculated.
     total_net_expenses = Decimal(total_expenses) + Decimal(total_utility_expenses) + Decimal(total_booking_expenses)
+    
     # Calculate net earnings (total earnings - total expenses)
     total_net_earnings = total_earnings_decimal - Decimal(total_net_expenses)
 
@@ -329,6 +330,7 @@ def financial_overview(request):
 
     # Get total VAT deductible (e.g., assume 19% for simplicity on total expenses)
     total_vat_deductible = total_net_expenses * Decimal('0.19')
+
     # Pass all data to the template
     return render(request, 'houses/financial_overview.html', {
         'total_earnings': total_earnings_decimal,

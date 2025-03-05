@@ -88,13 +88,16 @@ class HouseEarningAdmin(admin.ModelAdmin):
     list_filter = ('month', 'house')  # Filter by month and house
     ordering = ('-month',)  # Order by month in descending order
 
-# Customize how the booking expenses are displayed in the admin panel
+from django.contrib import admin
+from .models import BookingExpense
+from decimal import Decimal
+
 @admin.register(BookingExpense)
 class BookingExpenseAdmin(admin.ModelAdmin):
-    list_display = ('booking', 'expense_type', 'amount', 'vat_deductible', 'month', 'year')  # ✅ Added 'vat_deductible'
+    list_display = ('booking', 'expense_type', 'amount', 'vat_deductible', 'month_display', 'year_display')  # ✅ Added 'month_display' and 'year_display'
     search_fields = ('booking__house__name', 'booking__customer_name', 'expense_type')
-    list_filter = ('expense_type', 'month', 'year')
-    ordering = ('-year', '-month')
+    list_filter = ('expense_type', 'date')  # ✅ Filter by 'date' instead of 'month' and 'year'
+    ordering = ('-date',)  # ✅ Order by 'date' instead of 'year' and 'month'
 
     # ✅ Calculate VAT deductible (19% of the amount)
     def vat_deductible(self, obj):
@@ -104,6 +107,15 @@ class BookingExpenseAdmin(admin.ModelAdmin):
 
     vat_deductible.short_description = "VAT Deductible (19%)"  # ✅ Column header in admin panel
 
+    # ✅ Display month from 'date' field
+    def month_display(self, obj):
+        return obj.date.strftime('%m')  # Return month as two-digit string (01 to 12)
+    month_display.short_description = 'Month'
+
+    # ✅ Display year from 'date' field
+    def year_display(self, obj):
+        return obj.date.strftime('%Y')  # Return year as four-digit string
+    year_display.short_description = 'Year'
 
 
 
