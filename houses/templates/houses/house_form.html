@@ -3,11 +3,10 @@
 {% block content %}
   <h1>{% if house %}Edit{% else %}Add{% endif %} House</h1>
   
-  <form method="POST">
+  <form method="POST" enctype="multipart/form-data">  <!-- Add enctype here for file uploads -->
     {% csrf_token %}
     
     {% if house %}
-      <!-- Hidden field for the house ID when editing -->
       <input type="hidden" name="id" value="{{ house.id }}">
     {% endif %}
     
@@ -20,7 +19,15 @@
     <label for="price">Price:</label>
     <input type="number" step="0.01" name="price" value="{{ house.price|default:'' }}" required><br>
 
+    <label for="photo">Photo:</label>  <!-- Add photo field -->
+    <input type="file" name="photo"><br>
+
+    {% if house and house.photo %}
+      <img src="{{ house.photo.url }}" alt="{{ house.name }}" class="house-photo" width="100"><br> <!-- Display current photo if editing -->
+    {% endif %}
+    
     <button type="submit" class="btn btn-success">Save</button>
     <a href="{% url 'manage_houses' %}" class="btn btn-secondary">Cancel</a>
   </form>
 {% endblock %}
+

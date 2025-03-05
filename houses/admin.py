@@ -9,15 +9,31 @@ class BookingExpenseInline(admin.TabularInline):
     extra = 0  # Do not show extra empty forms
 
 
-# Customize how the houses are displayed in the admin panel
-class HouseAdmin(admin.ModelAdmin):
-    # Display the house name, address, and price in the list view
-    list_display = ('name', 'address', 'price')
+from django.contrib import admin
+from django.utils.html import mark_safe
+from .models import House
 
-    # Add a search bar that allows searching by house name and address
-    search_fields = ('name', 'address')
+# Check if the model is already registered
+if not admin.site.is_registered(House):
+    class HouseAdmin(admin.ModelAdmin):
+        # Display the house name, address, price, and photo preview in the list view
+        list_display = ('name', 'address', 'price', 'image_preview')
 
-# Customize how the houses are displayed in the admin panel
+        # Add a search bar that allows searching by house name and address
+        search_fields = ('name', 'address')
+
+        # Add image preview functionality
+        def image_preview(self, obj):
+            if obj.photo:  # Check if the house has a photo
+                return mark_safe(f'<img src="{obj.photo.url}" width="50" height="50" />')
+            return 'No image'  # Return a default text if there is no photo
+        image_preview.short_description = 'Image Preview'  # Name of the column for image preview
+
+    # Register the House model and its admin customization
+    admin.site.register(House, HouseAdmin)
+
+
+
 
 class BookingAdmin(admin.ModelAdmin):
     list_display = ('house', 'start_date', 'end_date', 'customer_name', 'booking_earnings', 'booking_price_with_vat', 'vat_amount')
@@ -50,8 +66,7 @@ class MonthlyEarningEarningAdmin(admin.ModelAdmin):
     search_fields = ('month_name',)  # Allow search by month name
     list_filter = ('month_name',)  # Filter by month name
 
-# Register the House model with the custom admin options
-admin.site.register(House, HouseAdmin)
+
 admin.site.register(Booking, BookingAdmin)
 
 

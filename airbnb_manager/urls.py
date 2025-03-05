@@ -20,6 +20,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from houses import views  # Make sure to import the views from the 'houses' app
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     # Admin panel URL
@@ -55,4 +57,4 @@ urlpatterns = [
 
     path('bookings/', views.booking_list, name='booking_list'),
     path('generate_invoice/<int:booking_id>/', views.generate_invoice, name='generate_invoice'),
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

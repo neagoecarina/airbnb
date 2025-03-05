@@ -13,6 +13,8 @@ class House(models.Model):
     name = models.CharField(max_length=255)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     address = models.CharField(max_length=255)
+    photo = models.ImageField(upload_to='house_photos/', blank=True, null=True)  # Add this line
+
 
     def __str__(self):
         return self.name

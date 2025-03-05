@@ -1,15 +1,153 @@
 {% extends 'master.html' %}
 
 {% block content %}
-  <h1>Houses</h1>
+  <h1>Houses Portofolio</h1>
 
-  <ul>
-    {% for x in myhouses %}
-      <li>
-        <a href="{% url 'details' x.id %}">{{ x.name }} {{ x.address }} ${{ x.price }}</a>
-      </li>
+  <style>
+    /* Add a nice background color to the body */
+    body {
+      background-color: #f4f7fa;
+      font-family: 'Roboto', sans-serif;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 2.5em;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 30px;
+    }
+
+    /* Center and style the photo grid container */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+      background-color: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Enhance the house item cards */
+    .house-item {
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s, box-shadow 0.3s;
+      background-color: #fff;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      text-decoration: none;
+    }
+
+    .house-item:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Add 3:4 aspect ratio for the images */
+    .house-photo {
+      width: 100%;
+      height: auto;
+      aspect-ratio: 3 / 4;
+      object-fit: cover;
+      border-radius: 10px 10px 0 0;  /* Round the top corners */
+    }
+
+    /* Style for the text part */
+    .house-info {
+      padding: 15px;
+      text-align: center;
+      background-color: #fff;
+      border-top: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      flex-grow: 1;
+    }
+
+    /* House name styling */
+    .house-info h3 {
+      font-size: 1.6em;
+      color: #333;
+      font-weight: bold;
+      margin: 0;
+      transition: color 0.3s ease;
+    }
+
+    .house-info h3:hover {
+      color: #e67e22;  /* Accent color for hover */
+    }
+
+    /* Address styling */
+    .house-info p {
+      font-size: 1.1em;
+      color: #555;
+      margin: 5px 0;
+    }
+
+    /* Price styling */
+    .house-info p.price {
+      font-size: 1.2em;
+      color: #e67e22;
+      font-weight: bold;
+    }
+
+    /* Style for when there are no houses available */
+    .empty-message {
+      text-align: center;
+      font-size: 1.2em;
+      color: #888;
+    }
+
+    /* Button styling */
+    .add-house-btn {
+      display: block;
+      margin: 20px auto;
+      padding: 10px 20px;
+      font-size: 1.1em;
+      color: #fff;
+      background: linear-gradient(90deg, #f39c12, #e67e22);
+      border-radius: 5px;
+      text-align: center;
+      text-decoration: none;
+      transition: background-color 0.3s ease, transform 0.3s ease;
+    }
+
+    .add-house-btn:hover {
+      background-color: #e67e22;
+      transform: translateY(-3px);
+    }
+  </style>
+
+  <div class="photo-grid">
+    {% for house in myhouses %}
+      <div class="house-item">
+        <a href="{% url 'details' house.id %}">
+          {% if house.photo %}
+            <img src="{{ house.photo.url }}" alt="{{ house.name }}" class="house-photo">
+          {% else %}
+            <img src="/path/to/default/image.jpg" alt="{{ house.name }}" class="house-photo">
+          {% endif %}
+          <div class="house-info">
+            <h3>{{ house.name }}</h3>
+            <p>{{ house.address }}</p>
+            <p class="price">${{ house.price }}</p>
+          </div>
+        </a>
+      </div>
     {% empty %}
-      <li>No houses available.</li>
+      <p class="empty-message">No houses available.</p>
     {% endfor %}
-  </ul>
+  </div>
+
+
 {% endblock %}

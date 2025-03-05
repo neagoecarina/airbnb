@@ -14,6 +14,9 @@ from .models import House
 def landing_page(request):
     return render(request, 'landing.html')  # This will load landing.html
 
+from django.shortcuts import render, redirect, get_object_or_404
+from .models import House
+
 # List all houses
 def houses(request):
     myhouses = House.objects.all()
@@ -27,9 +30,9 @@ def manage_houses(request):
 # View to add or edit a house
 def house_form(request, house_id=None):  # Use 'house_id' instead of 'id'
     if house_id:
-        house = get_object_or_404(House, id=house_id)  # Update this line
+        house = get_object_or_404(House, id=house_id)  # Get existing house for editing
     else:
-        house = None
+        house = None  # Create a new house if no ID
 
     context = {'house': house}
 
@@ -37,26 +40,30 @@ def house_form(request, house_id=None):  # Use 'house_id' instead of 'id'
         name = request.POST['name']
         address = request.POST['address']
         price = request.POST['price']
+        photo = request.FILES.get('photo')  # Get the uploaded photo
 
         if house:
             # Update the existing house
             house.name = name
             house.address = address
             house.price = price
+            if photo:  # If a new photo is uploaded
+                house.photo = photo
             house.save()
         else:
-            # Create a new house
-            House.objects.create(name=name, address=address, price=price)
+            # Create a new house with a photo
+            House.objects.create(name=name, address=address, price=price, photo=photo)
 
-        return redirect('manage_houses')
+        return redirect('manage_houses')  # Redirect to the manage houses page
 
     return render(request, 'houses/house_form.html', context)
-# View to delete a house
+
 # View to delete a house
 def delete_house(request, house_id):  # Use 'house_id' here as well
-    house = get_object_or_404(House, id=house_id)  # Update this line
+    house = get_object_or_404(House, id=house_id)  # Get the house to delete
     house.delete()
     return redirect('manage_houses')  # Redirect after deletion
+
 
 # View for house details
 # View for house details
