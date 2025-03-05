@@ -10,12 +10,15 @@
             <label for="time-period">Select Time Period</label>
             <select id="time-period" class="form-control">
                 <option value="monthly">This Month</option>
-                <option value="quarterly">This Quarter</option>
+                <option value="quarterly-q1">This Quarter (Jan-Mar)</option>
+                <option value="quarterly-q2">This Quarter (Apr-Jun)</option>
+                <option value="quarterly-q3">This Quarter (Jul-Sep)</option>
+                <option value="quarterly-q4">This Quarter (Oct-Dec)</option>
                 <option value="yearly">This Year</option>
-                <option value="custom">Custom Range</option>
             </select>
         </div>
     </div>
+
 
     <!-- Summary Dashboard -->
     <div class="row mb-4">
@@ -60,11 +63,6 @@
         </thead>
         <tbody>
             <tr>
-                <td>Monthly Expenses</td>
-                <td>${{ total_expenses }}</td>
-                <td>$ {{ total_expenses|multiply:0.19 }} </td>
-            </tr>
-            <tr>
                 <td>Utility Expenses</td>
                 <td>${{ total_utility_expenses }}</td>
                 <td>${{ total_utility_expenses|multiply:0.19 }}</td>
@@ -93,11 +91,11 @@
             </tr>
         </thead>
         <tbody>
-            {% for house in houses %}
+            {% for house in house_earnings_data %}
             <tr>
-                <td>{{ house.name }}</td>
-                <td>${{ house.total_earnings }}</td>
-                <td>${{ house.total_earnings_with_vat }}</td>
+                <td>{{ house.house_name }}</td>
+                <td>${{ house.total_earnings_excl_vat }}</td>
+                <td>${{ house.total_earnings_incl_vat }}</td>
             </tr>
             {% endfor %}
         </tbody>

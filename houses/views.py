@@ -308,28 +308,55 @@ def financial_overview(request):
     ).aggregate(Sum('total_expense'))['total_expense__sum'] or 0.00
 
     # Get total utility expenses for the current month and year
-    total_utility_expenses = UtilityExpense.objects.filter(date__month=current_month, date__year=current_year).aggregate(Sum('total_expense'))['total_expense__sum'] or 0.00
+    total_utility_expenses = UtilityExpense.objects.filter(
+        date__month=current_month, 
+        date__year=current_year
+    ).aggregate(Sum('total_expense'))['total_expense__sum'] or 0.00
 
     # Get total booking expenses for the current month and year
-    total_booking_expenses = BookingExpense.objects.filter(date__month=current_month, date__year=current_year).aggregate(Sum('amount'))['amount__sum'] or 0.00
+    total_booking_expenses = BookingExpense.objects.filter(
+        date__month=current_month, 
+        date__year=current_year
+    ).aggregate(Sum('amount'))['amount__sum'] or 0.00
 
     # Combine all expenses
-    total_net_expenses = Decimal(total_expenses) + Decimal(total_utility_expenses) + Decimal(total_booking_expenses)
-    
+    total_net_expenses = Decimal(total_expenses)
+
     # Calculate net earnings (total earnings - total expenses)
-    total_net_earnings = total_earnings_decimal - Decimal(total_net_expenses)
+    total_net_earnings = total_earnings_decimal - total_net_expenses
 
-    # Calculate average earnings per house for the current month
+    # Calculate earnings per house (Excluding and Including VAT)
     houses = House.objects.all()
-    total_earnings_per_house = 0.00
-    for house in houses:
-        house_earnings = HouseEarning.objects.filter(house=house, month=f'{current_year}-{current_month:02d}').aggregate(Sum('total_price'))['total_price__sum'] or 0.00
-        total_earnings_per_house += house_earnings
+    house_earnings_data = []
+    total_earnings_per_house = Decimal('0.00')
 
+    for house in houses:
+        house_earnings_excl_vat = HouseEarning.objects.filter(
+            house=house, 
+            month__year=current_year, 
+            month__month=current_month
+        ).aggregate(Sum('total_price'))['total_price__sum'] or Decimal('0.00')
+
+        # Calculate earnings including VAT (19% VAT)
+        house_earnings_incl_vat = house_earnings_excl_vat * Decimal('1.19')
+
+        house_earnings_data.append({
+            'house_name': house.name,
+            'total_earnings_excl_vat': house_earnings_excl_vat,
+            'total_earnings_incl_vat': house_earnings_incl_vat
+        })
+
+        # Add to total earnings across all houses
+        total_earnings_per_house += house_earnings_excl_vat
+
+    # Calculate the average earnings per house
     avg_earnings_per_house = total_earnings_per_house / len(houses) if len(houses) > 0 else 0.00
 
     # Get total VAT deductible (e.g., assume 19% for simplicity on total expenses)
     total_vat_deductible = total_net_expenses * Decimal('0.19')
+
+    # Calculate net VAT
+    net_vat = total_vat_collected - total_vat_deductible
 
     # Pass all data to the template
     return render(request, 'houses/financial_overview.html', {
@@ -338,12 +365,15 @@ def financial_overview(request):
         'total_utility_expenses': total_utility_expenses,
         'total_booking_expenses': total_booking_expenses,
         'total_net_earnings': total_net_earnings,
-        'avg_earnings_per_house': avg_earnings_per_house,
         'total_vat_collected': total_vat_collected,
         'total_vat_deductible': total_vat_deductible,
         'houses': houses,
         'total_net_expenses': total_net_expenses,
+        'net_vat': net_vat,
+        'house_earnings_data': house_earnings_data,
+        'avg_earnings_per_house': avg_earnings_per_house,  # Make sure this is passed
     })
+
 
 
 @csrf_exempt
