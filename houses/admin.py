@@ -55,10 +55,15 @@ admin.site.register(House, HouseAdmin)
 admin.site.register(Booking, BookingAdmin)
 
 
+from django.contrib import admin
+from decimal import Decimal
+from .models import UtilityExpense
+
 @admin.register(UtilityExpense)
 class UtilityExpenseAdmin(admin.ModelAdmin):
-    list_display = ('house', 'month', 'year', 'water_expense', 'electricity_expense', 'total_expense', 'vat_deductible')
-    list_filter = ('month', 'year', 'house')
+    # Adjust list_display to use 'date' instead of 'month' and 'year'
+    list_display = ('house', 'date', 'water_expense', 'electricity_expense', 'total_expense', 'vat_deductible')
+    list_filter = ('date', 'house')  # You can filter by 'date' directly now
     search_fields = ('house__name',)
 
     # Calculate the VAT deductible amount (19% of the total expense)
@@ -68,6 +73,7 @@ class UtilityExpenseAdmin(admin.ModelAdmin):
         return None
 
     vat_deductible.short_description = "VAT Deductible (19%)"
+
 
 @admin.register(YearlyEarning)
 class YearlyEarningAdmin(admin.ModelAdmin):

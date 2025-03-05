@@ -88,8 +88,10 @@ def house_detail(request, house_id):
             customer_name=customer_name,
             start_date=start_date,
             end_date=end_date
+            
         )
-
+        # ✅ Call update_monthly_expense() after booking is saved
+        #update_monthly_expense(house_id, new_booking.start_date.year, new_booking.start_date.month)
         return JsonResponse({"success": True, "message": "Booking successful!", "customer_name": new_booking.customer_name})
 
     # Get booked dates **(Move this inside the function)**
@@ -116,10 +118,25 @@ from django.http import JsonResponse
 from decimal import Decimal
 from .models import UtilityExpense
 
+import datetime
+from decimal import Decimal
+from django.http import JsonResponse
+from .models import UtilityExpense, House
+from datetime import datetime  # Ensure this is at the top of the file
+
+from datetime import datetime
+from decimal import Decimal
+from django.http import JsonResponse
+from django.shortcuts import render
+
+from datetime import date  # Add this import at the top
+
+# Your other views and logic
 def add_utility_expenses(request):
     houses = House.objects.all()
+    current_year = datetime.now().year  # Get the current year dynamically
     months = range(1, 13)
-    years = range(2023, 2034)
+    years = range(current_year, current_year + 10)  # Start from current year
 
     if request.method == "POST":
         house_id = request.POST.get('house')
@@ -139,8 +156,11 @@ def add_utility_expenses(request):
         water_expense = Decimal(water_expense) if water_expense else None
         electricity_expense = Decimal(electricity_expense) if electricity_expense else None
 
+        # Get the first day of the month as a DateField
+        first_day_of_month = date(int(year), int(month), 1)
+
         # Check if an entry already exists for this house and month
-        existing_entry = UtilityExpense.objects.filter(house_id=house_id, month=month, year=year).first()
+        existing_entry = UtilityExpense.objects.filter(house_id=house_id, date=first_day_of_month).first()
 
         if existing_entry:
             # Check if the user confirmed update in the modal (proceed == "true")
@@ -158,7 +178,6 @@ def add_utility_expenses(request):
                 existing_entry.save()
 
                 return JsonResponse({"message": "Expenses updated successfully."})
-
             else:
                 modal_message = ""
                 
@@ -181,7 +200,7 @@ def add_utility_expenses(request):
                     # Recalculate total expense
                     existing_entry.total_expense = float(existing_entry.water_expense) + float(existing_entry.electricity_expense)
                     existing_entry.save()
-
+                    update_monthly_expense(house_id, first_day_of_month)  # Call the update function
                     return JsonResponse({"message": "Expenses updated successfully."})
 
                 # If there is a modal message, return the modal message
@@ -196,8 +215,7 @@ def add_utility_expenses(request):
             # If no existing entry for this house, month, and year, create a new entry
             UtilityExpense.objects.create(
                 house_id=house_id,
-                month=month,
-                year=year,
+                date=first_day_of_month,  # Use the full date here
                 water_expense=water_expense or 0,  # Default to 0 if still None
                 electricity_expense=electricity_expense or 0,
                 total_expense=float((water_expense or 0) + (electricity_expense or 0))
@@ -209,6 +227,42 @@ def add_utility_expenses(request):
         'months': months,
         'years': years,
     })
+
+def update_monthly_expense(house_id, month_date):  # Use a DateField directly
+
+    from django.db.models import Sum
+    from datetime import date
+
+    # Get the first day of the month
+    month_date = date(year=int(year), month=int(month), day=1)
+
+    # Sum total utility expenses for this house & month
+    total_utilities = UtilityExpense.objects.filter(
+        house_id=house_id,
+        date=month_date
+    ).aggregate(total=Sum('total_expense'))['total'] or 0  # Default to 0 if none
+
+    # Sum total booking expenses (e.g., cleaning fees)
+    total_booking_expenses = Booking.objects.filter(
+        house_id=house_id,
+        start_date__year=year,
+        start_date__month=month
+    ).aggregate(total=Sum('cleaning_fee'))['total'] or 0  # Default to 0 if none
+
+    # Calculate total expenses
+    total_expenses = total_utilities + total_booking_expenses
+
+    # Only create/update MonthlyExpense if there's **any** expense
+    if total_expenses > 0:
+        monthly_expense, created = MonthlyExpense.objects.get_or_create(
+            house_id=house_id,
+            date=month_date,
+            defaults={"total_expense": total_expenses}
+        )
+        if not created:
+            # Update existing entry
+            monthly_expense.total_expense = total_expenses
+            monthly_expense.save()
 
 
 
