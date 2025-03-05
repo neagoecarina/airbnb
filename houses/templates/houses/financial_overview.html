@@ -9,16 +9,15 @@
         <div class="col-md-4">
             <label for="time-period">Select Time Period</label>
             <select id="time-period" class="form-control">
-                <option value="monthly">This Month</option>
-                <option value="quarterly-q1">This Quarter (Jan-Mar)</option>
-                <option value="quarterly-q2">This Quarter (Apr-Jun)</option>
-                <option value="quarterly-q3">This Quarter (Jul-Sep)</option>
-                <option value="quarterly-q4">This Quarter (Oct-Dec)</option>
-                <option value="yearly">This Year</option>
+                <option value="monthly" {% if time_period == 'monthly' %}selected{% endif %}>This Month</option>
+                <option value="quarterly-q1" {% if time_period == 'quarterly-q1' %}selected{% endif %}>This Quarter (Jan-Mar)</option>
+                <option value="quarterly-q2" {% if time_period == 'quarterly-q2' %}selected{% endif %}>This Quarter (Apr-Jun)</option>
+                <option value="quarterly-q3" {% if time_period == 'quarterly-q3' %}selected{% endif %}>This Quarter (Jul-Sep)</option>
+                <option value="quarterly-q4" {% if time_period == 'quarterly-q4' %}selected{% endif %}>This Quarter (Oct-Dec)</option>
+                <option value="yearly" {% if time_period == 'yearly' %}selected{% endif %}>This Year</option>
             </select>
         </div>
     </div>
-
 
     <!-- Summary Dashboard -->
     <div class="row mb-4">
@@ -132,6 +131,14 @@
         <button class="btn btn-primary">Export to Excel</button>
         <button class="btn btn-primary">Generate PDF Report</button>
     </div>
+    <script>
+        document.getElementById('time-period').addEventListener('change', function() {
+            let selectedPeriod = this.value;
+            // Update the URL with the selected time period
+            window.location.href = '?time_period=' + encodeURIComponent(selectedPeriod);
+        });
 
+    </script>
+    
 </div>
 {% endblock %}

@@ -142,8 +142,13 @@ class Booking(models.Model):
 
 from decimal import Decimal
 
+from django.db import models
+from decimal import Decimal
+
+from datetime import datetime
+
 class MonthlyEarning(models.Model):
-    month_name = models.CharField(max_length=7)  # Format: YYYY-MM
+    month_name = models.DateField()  # Store as DateField, e.g., the first day of the month
     total_earnings = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
 
     def __str__(self):
@@ -156,8 +161,10 @@ class MonthlyEarning(models.Model):
 
     @staticmethod
     def get_or_create_earnings_for_month(month_name):
-        # Check if earnings for this month already exist
-        earnings, created = MonthlyEarning.objects.get_or_create(month_name=month_name)
+        # Ensure month_name is converted to a valid date (e.g., "2025-03" -> "2025-03-01")
+        first_day_of_month = datetime.strptime(month_name, "%Y-%m")
+        # Use the first day of the month as the valid date
+        earnings, created = MonthlyEarning.objects.get_or_create(month_name=first_day_of_month.date())
         return earnings
 
 from decimal import Decimal   
@@ -173,7 +180,6 @@ class UtilityExpense(models.Model):
     total_expense = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     def save(self, *args, **kwargs):
-       
         # Calculate total expense from water and electricity
         self.total_expense = self.water_expense + self.electricity_expense
         super().save(*args, **kwargs)  # Save UtilityExpense first
@@ -182,34 +188,40 @@ class UtilityExpense(models.Model):
         first_day_of_month = self.date.replace(day=1)
 
         try:
-                # Recalculate total utility expenses for the month
-                total_utilities = UtilityExpense.objects.filter(
+            # Recalculate total utility expenses for the month
+            total_utilities = UtilityExpense.objects.filter(
                 house=self.house,
                 date__year=self.date.year,
                 date__month=self.date.month
-                ).aggregate(total=models.Sum('total_expense'))['total'] or 0  # Default to 0
+            ).aggregate(total=models.Sum('total_expense'))['total'] or 0  # Default to 0
 
-                # Create or update MonthlyExpense
-                monthly_expense, created = MonthlyExpense.objects.get_or_create(
+            # Create or update MonthlyExpense
+            monthly_expense, created = MonthlyExpense.objects.get_or_create(
                 house=self.house,
                 date=first_day_of_month,
                 defaults={"total_expense": total_utilities}
-                )
+            )
 
-                if not created:
-                        monthly_expense.total_expense = total_utilities
-                        monthly_expense.save()
+            if not created:
+                # If the MonthlyExpense already exists, add the new total_utilities to the existing one
+                monthly_expense.total_expense += total_utilities
+                monthly_expense.save()
 
         except Exception as e:
-                print(f"Error while updating MonthlyExpense: {e}")
+            print(f"Error while updating MonthlyExpense: {e}")
 
                 
+from datetime import datetime
+from decimal import Decimal
+from django.db import models
+
 class YearlyEarning(models.Model):
-    year = models.CharField(max_length=4)  # Format: YYYY
-    total_earnings = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    year = models.DateField()  # Store as DateField, e.g., the first day of the year
+    total_earnings = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
 
     def __str__(self):
-        return f"Earnings for {self.year}"
+        # Ensure that 'year' is not None
+        return f"Earnings for {self.year.year if self.year else 'Unknown Year'}"
 
     @property
     def total_earnings_with_vat(self):
@@ -218,8 +230,9 @@ class YearlyEarning(models.Model):
 
     @staticmethod
     def get_or_create_yearly_earnings(year):
-        # Check if earnings for this year already exist
-        earnings, created = YearlyEarning.objects.get_or_create(year=year)
+        # Convert year to the first day of that year (e.g., "2025" -> "2025-01-01")
+        first_day_of_year = datetime.strptime(year, "%Y")
+        earnings, created = YearlyEarning.objects.get_or_create(year=first_day_of_year.date())
         return earnings
 
 
@@ -260,11 +273,32 @@ class BookingExpense(models.Model):
         return f"{self.expense_type} for {self.booking.house.name} in {self.date.strftime('%m/%Y')}"
 
     
+from django.db import models
+from decimal import Decimal
+
 class MonthlyExpense(models.Model):
-    house = models.ForeignKey(House, on_delete=models.CASCADE)
-    date = models.DateField()  # Changed to DateField
-    total_expense = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    house = models.ForeignKey('House', on_delete=models.CASCADE)
+    date = models.DateField()  # Using DateField to store the date (first of the month)
+    total_expense = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
 
     def __str__(self):
         return f"Expense for {self.house.name} in {self.date.strftime('%m-%Y')}"
 
+    @staticmethod
+    def update_expenses(house, expense_value, date):
+        # Set the date to the first day of the month
+        month_start_date = date.replace(day=1)  # Ensure it's the first day of the month
+
+        # Try to get the monthly expense for the house and month
+        monthly_expense, created = MonthlyExpense.objects.get_or_create(
+            house=house, date=month_start_date
+        )
+
+        if not created:  # If the entry already exists, add the new expense to the total
+            monthly_expense.total_expense += expense_value
+            monthly_expense.save()
+        else:  # If it's a new entry, set the total expense to the value of the new expense
+            monthly_expense.total_expense = expense_value
+            monthly_expense.save()
+
+        return monthly_expense

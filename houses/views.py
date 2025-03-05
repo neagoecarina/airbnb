@@ -281,49 +281,115 @@ from .models import MonthlyEarning, House, MonthlyExpense, UtilityExpense, House
 from django.utils import timezone
 
 
-from django.db.models import Sum
-from datetime import datetime
+
+from datetime import datetime, timedelta
 from decimal import Decimal
 from django.db.models import Sum
-from datetime import datetime
+from django.shortcuts import render
+
+from datetime import datetime, timedelta
+from decimal import Decimal
+from django.db.models import Sum
+from django.shortcuts import render
 
 def financial_overview(request):
+    # Get the selected time period from the URL or default to "monthly"
+    time_period = request.GET.get('time_period', 'monthly')
+
     # Get the current month and year
     current_month = datetime.now().month
     current_year = datetime.now().year
 
-    # Get total earnings for the current month
-    total_earnings = MonthlyEarning.objects.filter(month_name=f'{current_year}-{current_month:02d}').aggregate(Sum('total_earnings'))['total_earnings__sum'] or 0.00
+    # Determine the date range based on the time period
+    if time_period == 'monthly':
+        # Start of the current month
+        start_date = datetime(current_year, current_month, 1)
+        # End of the current month: Take the first day of the next month and subtract 1 day
+        next_month = current_month + 1 if current_month < 12 else 1
+        next_month_year = current_year if current_month < 12 else current_year + 1
+        end_date = datetime(next_month_year, next_month, 1) - timedelta(days=1)
+    elif time_period == 'quarterly-q1':
+        start_date = datetime(current_year, 1, 1)
+        end_date = datetime(current_year, 3, 31)
+    elif time_period == 'quarterly-q2':
+        start_date = datetime(current_year, 4, 1)
+        end_date = datetime(current_year, 6, 30)
+    elif time_period == 'quarterly-q3':
+        start_date = datetime(current_year, 7, 1)
+        end_date = datetime(current_year, 9, 30)
+    elif time_period == 'quarterly-q4':
+        start_date = datetime(current_year, 10, 1)
+        end_date = datetime(current_year, 12, 31)
+    elif time_period == 'yearly':
+        start_date = datetime(current_year, 1, 1)
+        end_date = datetime(current_year, 12, 31)
+    else:
+        # Default to the current month if the time period is not recognized
+        start_date = datetime(current_year, current_month, 1)
+        next_month = current_month + 1 if current_month < 12 else 1
+        next_month_year = current_year if current_month < 12 else current_year + 1
+        end_date = datetime(next_month_year, next_month, 1) - timedelta(days=1)
 
-    # Convert total_earnings to Decimal to avoid type errors when performing calculations
+    # DEBUG: Print the date range for the selected period
+    print(f"DEBUG: Time Period - {time_period}")
+    print(f"DEBUG: Start Date: {start_date}")
+    print(f"DEBUG: End Date: {end_date}")
+
+    # Get total earnings for the selected time period
+    total_earnings = MonthlyEarning.objects.filter(
+        month_name__gte=start_date, 
+        month_name__lte=end_date
+    ).aggregate(Sum('total_earnings'))['total_earnings__sum'] or 0.00
+
+    # DEBUG: Print the raw total earnings value
+    print(f"DEBUG: Total Earnings from DB: {total_earnings}")
+
     total_earnings_decimal = Decimal(total_earnings)
 
     # Calculate total VAT collected (19% of total earnings)
     total_vat_collected = total_earnings_decimal * Decimal('0.19')
 
-    # Get total expenses from MonthlyExpense for the current month and year
+    # DEBUG: Print the calculated VAT collected
+    print(f"DEBUG: Total VAT Collected: {total_vat_collected}")
+
+    # Get total expenses for the selected time period
     total_expenses = MonthlyExpense.objects.filter(
-        date__month=current_month, 
-        date__year=current_year
+        date__gte=start_date, 
+        date__lte=end_date
     ).aggregate(Sum('total_expense'))['total_expense__sum'] or 0.00
 
-    # Get total utility expenses for the current month and year
+    # DEBUG: Print the raw total expenses value
+    print(f"DEBUG: Total Expenses from DB: {total_expenses}")
+
+    # Get total utility expenses for the selected time period
     total_utility_expenses = UtilityExpense.objects.filter(
-        date__month=current_month, 
-        date__year=current_year
+        date__gte=start_date, 
+        date__lte=end_date
     ).aggregate(Sum('total_expense'))['total_expense__sum'] or 0.00
 
-    # Get total booking expenses for the current month and year
+    # DEBUG: Print the raw utility expenses value
+    print(f"DEBUG: Total Utility Expenses from DB: {total_utility_expenses}")
+
+    # Get total booking expenses for the selected time period
     total_booking_expenses = BookingExpense.objects.filter(
-        date__month=current_month, 
-        date__year=current_year
+        date__gte=start_date, 
+        date__lte=end_date
     ).aggregate(Sum('amount'))['amount__sum'] or 0.00
 
+    # DEBUG: Print the raw booking expenses value
+    print(f"DEBUG: Total Booking Expenses from DB: {total_booking_expenses}")
+
     # Combine all expenses
-    total_net_expenses = Decimal(total_expenses)
+    total_net_expenses = Decimal(total_utility_expenses) + Decimal(total_booking_expenses)
+
+    # DEBUG: Print the total combined expenses
+    print(f"DEBUG: Total Net Expenses: {total_net_expenses}")
 
     # Calculate net earnings (total earnings - total expenses)
     total_net_earnings = total_earnings_decimal - total_net_expenses
+
+    # DEBUG: Print the net earnings
+    print(f"DEBUG: Total Net Earnings: {total_net_earnings}")
 
     # Calculate earnings per house (Excluding and Including VAT)
     houses = House.objects.all()
@@ -336,6 +402,9 @@ def financial_overview(request):
             month__year=current_year, 
             month__month=current_month
         ).aggregate(Sum('total_price'))['total_price__sum'] or Decimal('0.00')
+
+        # DEBUG: Print the earnings for each house
+        print(f"DEBUG: Earnings for House {house.name}: {house_earnings_excl_vat}")
 
         # Calculate earnings including VAT (19% VAT)
         house_earnings_incl_vat = house_earnings_excl_vat * Decimal('1.19')
@@ -352,11 +421,21 @@ def financial_overview(request):
     # Calculate the average earnings per house
     avg_earnings_per_house = total_earnings_per_house / len(houses) if len(houses) > 0 else 0.00
 
+    # DEBUG: Print the total earnings per house and average earnings
+    print(f"DEBUG: Total Earnings Across All Houses: {total_earnings_per_house}")
+    print(f"DEBUG: Average Earnings Per House: {avg_earnings_per_house}")
+
     # Get total VAT deductible (e.g., assume 19% for simplicity on total expenses)
     total_vat_deductible = total_net_expenses * Decimal('0.19')
 
+    # DEBUG: Print the VAT deductible
+    print(f"DEBUG: Total VAT Deductible: {total_vat_deductible}")
+
     # Calculate net VAT
     net_vat = total_vat_collected - total_vat_deductible
+
+    # DEBUG: Print the net VAT
+    print(f"DEBUG: Net VAT: {net_vat}")
 
     # Pass all data to the template
     return render(request, 'houses/financial_overview.html', {
@@ -372,8 +451,8 @@ def financial_overview(request):
         'net_vat': net_vat,
         'house_earnings_data': house_earnings_data,
         'avg_earnings_per_house': avg_earnings_per_house,  # Make sure this is passed
+        'time_period': time_period,  # Pass selected time period to the template
     })
-
 
 
 @csrf_exempt
