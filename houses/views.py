@@ -399,8 +399,8 @@ def financial_overview(request):
     for house in houses:
         house_earnings_excl_vat = HouseEarning.objects.filter(
             house=house, 
-            month__year=current_year, 
-            month__month=current_month
+            month__gte=start_date, 
+            month__lte=end_date
         ).aggregate(Sum('total_price'))['total_price__sum'] or Decimal('0.00')
 
         # DEBUG: Print the earnings for each house
@@ -521,48 +521,257 @@ def calculate_taxes(request):
         return JsonResponse(response_data)
 
 import csv
-import openpyxl
-from io import BytesIO
+from datetime import datetime, timedelta
+from decimal import Decimal
+from django.shortcuts import render
 from django.http import HttpResponse
-from django.template.loader import render_to_string
-from weasyprint import HTML
-from .models import House, MonthlyExpense  # Modify with your actual models
+from django.db.models import Sum
+from .models import MonthlyEarning, MonthlyExpense, UtilityExpense, BookingExpense, House, HouseEarning
 
-# Export to CSV
 def export_to_csv(request):
-    # Fetch the data you want to export
-    expenses = MonthlyExpense.objects.all()
-    
-    # Create a response with CSV content type
+    time_period = request.GET.get('time_period', 'monthly')
+    current_month = datetime.now().month
+    current_year = datetime.now().year
+
+    if time_period == 'monthly':
+        start_date = datetime(current_year, current_month, 1)
+        next_month = current_month + 1 if current_month < 12 else 1
+        next_month_year = current_year if current_month < 12 else current_year + 1
+        end_date = datetime(next_month_year, next_month, 1) - timedelta(days=1)
+    elif time_period == 'quarterly-q1':
+        start_date = datetime(current_year, 1, 1)
+        end_date = datetime(current_year, 3, 31)
+    elif time_period == 'quarterly-q2':
+        start_date = datetime(current_year, 4, 1)
+        end_date = datetime(current_year, 6, 30)
+    elif time_period == 'quarterly-q3':
+        start_date = datetime(current_year, 7, 1)
+        end_date = datetime(current_year, 9, 30)
+    elif time_period == 'quarterly-q4':
+        start_date = datetime(current_year, 10, 1)
+        end_date = datetime(current_year, 12, 31)
+    elif time_period == 'yearly':
+        start_date = datetime(current_year, 1, 1)
+        end_date = datetime(current_year, 12, 31)
+    else:
+        start_date = datetime(current_year, current_month, 1)
+        next_month = current_month + 1 if current_month < 12 else 1
+        next_month_year = current_year if current_month < 12 else current_year + 1
+        end_date = datetime(next_month_year, next_month, 1) - timedelta(days=1)
+
+    total_earnings = MonthlyEarning.objects.filter(
+        month_name__gte=start_date, 
+        month_name__lte=end_date
+    ).aggregate(Sum('total_earnings'))['total_earnings__sum'] or 0.00
+
+    total_earnings_decimal = Decimal(total_earnings)
+    total_vat_collected = total_earnings_decimal * Decimal('0.19')
+
+    total_expenses = MonthlyExpense.objects.filter(
+        date__gte=start_date, 
+        date__lte=end_date
+    ).aggregate(Sum('total_expense'))['total_expense__sum'] or 0.00
+
+    total_utility_expenses = UtilityExpense.objects.filter(
+        date__gte=start_date, 
+        date__lte=end_date
+    ).aggregate(Sum('total_expense'))['total_expense__sum'] or 0.00
+
+    total_booking_expenses = BookingExpense.objects.filter(
+        date__gte=start_date, 
+        date__lte=end_date
+    ).aggregate(Sum('amount'))['amount__sum'] or 0.00
+
+    total_net_expenses = Decimal(total_utility_expenses) + Decimal(total_booking_expenses)
+    total_net_earnings = total_earnings_decimal - total_net_expenses
+
+    houses = House.objects.all()
+    house_earnings_data = []
+
+    for house in houses:
+        house_earnings_excl_vat = HouseEarning.objects.filter(
+            house=house, 
+            month__year=current_year, 
+            month__month=current_month
+        ).aggregate(Sum('total_price'))['total_price__sum'] or Decimal('0.00')
+
+        house_earnings_incl_vat = house_earnings_excl_vat * Decimal('1.19')
+        house_earnings_data.append([house.name, house_earnings_excl_vat, house_earnings_incl_vat])
+
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="monthly_expenses.csv"'
-    
+    response['Content-Disposition'] = f'attachment; filename="financial_overview_{time_period}.csv"'
+
     writer = csv.writer(response)
-    writer.writerow(['House', 'Date', 'Total Expense'])  # Header
-    
-    for expense in expenses:
-        writer.writerow([expense.house.name, expense.date, expense.total_expense])
-    
+    writer.writerow(['Total Earnings', 'Total Expenses', 'Total Utility Expenses', 'Total Booking Expenses', 'Total Net Earnings', 'Total VAT Collected'])
+    writer.writerow([total_earnings_decimal, total_expenses, total_utility_expenses, total_booking_expenses, total_net_earnings, total_vat_collected])
+
+    writer.writerow([])
+    writer.writerow(['House Name', 'Earnings Excluding VAT', 'Earnings Including VAT'])
+    for row in house_earnings_data:
+        writer.writerow(row)
+
     return response
 
-# Export to Excel
+
+import openpyxl
+from openpyxl.styles import Font
+from django.http import HttpResponse
+from datetime import datetime, timedelta
+from decimal import Decimal
+from django.db.models import Sum
+from .models import MonthlyExpense, MonthlyEarning, UtilityExpense, BookingExpense, House, HouseEarning
+
 def export_to_excel(request):
-    expenses = MonthlyExpense.objects.all()
-    
-    # Create an Excel workbook and sheet
+    # Get the selected time period from the request
+    time_period = request.GET.get('time_period', 'monthly')
+
+    # Get the current month and year
+    current_month = datetime.now().month
+    current_year = datetime.now().year
+
+    # Determine the date range
+    if time_period == 'monthly':
+        start_date = datetime(current_year, current_month, 1)
+        next_month = current_month + 1 if current_month < 12 else 1
+        next_month_year = current_year if current_month < 12 else current_year + 1
+        end_date = datetime(next_month_year, next_month, 1) - timedelta(days=1)
+    elif time_period == 'quarterly-q1':
+        start_date, end_date = datetime(current_year, 1, 1), datetime(current_year, 3, 31)
+    elif time_period == 'quarterly-q2':
+        start_date, end_date = datetime(current_year, 4, 1), datetime(current_year, 6, 30)
+    elif time_period == 'quarterly-q3':
+        start_date, end_date = datetime(current_year, 7, 1), datetime(current_year, 9, 30)
+    elif time_period == 'quarterly-q4':
+        start_date, end_date = datetime(current_year, 10, 1), datetime(current_year, 12, 31)
+    elif time_period == 'yearly':
+        start_date, end_date = datetime(current_year, 1, 1), datetime(current_year, 12, 31)
+
+    # Fetch data
+    total_earnings = MonthlyEarning.objects.filter(
+        month_name__gte=start_date, 
+        month_name__lte=end_date
+    ).aggregate(Sum('total_earnings'))['total_earnings__sum'] or 0.00
+
+    total_expenses = MonthlyExpense.objects.filter(
+        date__gte=start_date, 
+        date__lte=end_date
+    ).aggregate(Sum('total_expense'))['total_expense__sum'] or 0.00
+
+    total_utility_expenses = UtilityExpense.objects.filter(
+        date__gte=start_date, 
+        date__lte=end_date
+    ).aggregate(Sum('total_expense'))['total_expense__sum'] or 0.00
+
+    total_booking_expenses = BookingExpense.objects.filter(
+        date__gte=start_date, 
+        date__lte=end_date
+    ).aggregate(Sum('amount'))['amount__sum'] or 0.00
+
+    total_net_expenses = Decimal(total_utility_expenses) + Decimal(total_booking_expenses)
+    total_earnings_decimal = Decimal(total_earnings)
+    total_net_earnings = total_earnings_decimal - total_net_expenses
+
+    total_vat_collected = total_earnings_decimal * Decimal('0.19')
+    total_vat_deductible = total_net_expenses * Decimal('0.19')
+    net_vat = total_vat_collected - total_vat_deductible
+
+    # Earnings per house
+    houses = House.objects.all()
+    house_earnings_data = []
+    total_earnings_per_house = Decimal('0.00')
+
+    for house in houses:
+        house_earnings_excl_vat = HouseEarning.objects.filter(
+            house=house, 
+            month__year=current_year, 
+            month__month=current_month
+        ).aggregate(Sum('total_price'))['total_price__sum'] or Decimal('0.00')
+
+        house_earnings_incl_vat = house_earnings_excl_vat * Decimal('1.19')
+
+        house_earnings_data.append({
+            'house_name': house.name,
+            'total_earnings_excl_vat': house_earnings_excl_vat,
+            'total_earnings_incl_vat': house_earnings_incl_vat
+        })
+
+        total_earnings_per_house += house_earnings_excl_vat
+
+    avg_earnings_per_house = total_earnings_per_house / len(houses) if len(houses) > 0 else 0.00
+
+    # Create Excel Workbook
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.append(['House', 'Date', 'Total Expense'])  # Header
+    ws.title = "Financial Overview"
+
+    bold_font = Font(bold=True)
+
+    # 🟢 Financial Summary
+    ws.append(["Financial Overview"])
+    ws["A1"].font = bold_font
+    ws.append([])
     
-    for expense in expenses:
-        ws.append([expense.house.name, expense.date, expense.total_expense])
+    summary_data = [
+        ("Total Earnings", total_earnings_decimal),
+        ("Total Expenses", total_net_expenses),
+        ("Net Earnings", total_net_earnings),
+        ("Total VAT Collected", total_vat_collected),
+        ("Total VAT Deductible", total_vat_deductible),
+        ("Net VAT", net_vat),
+        ("Average Earnings per House", avg_earnings_per_house),
+    ]
     
-    # Save to a BytesIO object to return as response
+    for row in summary_data:
+        ws.append(row)
+
+    ws.append([])
+
+    # 🟢 Expense Breakdown
+    ws.append(["Expense Breakdown"])
+    ws.append(["Expense Type", "Amount"])
+    ws["A{}".format(ws.max_row)].font = bold_font
+
+    ws.append(["Utility Expenses", total_utility_expenses])
+    ws.append(["Booking Expenses", total_booking_expenses])
+    ws.append(["Total Expenses", total_net_expenses])
+
+    ws.append([])
+
+    # 🟢 Earnings by House
+    ws.append(["Earnings by House"])
+    ws.append(["House Name", "Total Earnings (Excl. VAT)", "Total Earnings (Incl. VAT)"])
+    ws["A{}".format(ws.max_row)].font = bold_font
+
+    for house_data in house_earnings_data:
+        ws.append([
+            house_data['house_name'],
+            house_data['total_earnings_excl_vat'],
+            house_data['total_earnings_incl_vat']
+        ])
+
+    ws.append([])
+
+    # 🟢 VAT Overview
+    ws.append(["VAT Overview"])
+    ws.append(["VAT Type", "Value"])
+    ws["A{}".format(ws.max_row)].font = bold_font
+
+    vat_data = [
+        ("Total VAT Collected", total_vat_collected),
+        ("Total VAT Deductible", total_vat_deductible),
+        ("Net VAT", net_vat),
+    ]
+
+    for row in vat_data:
+        ws.append(row)
+
+    # 📤 Save and return response
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = 'attachment; filename="monthly_expenses.xlsx"'
+    response['Content-Disposition'] = 'attachment; filename="financial_report.xlsx"'
     wb.save(response)
-    
+
     return response
+
 
 # Generate PDF Report
 from django.shortcuts import render
