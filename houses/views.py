@@ -426,7 +426,9 @@ def financial_overview(request):
         total_earnings_per_house += house_earnings_excl_vat
 
     # Calculate the average earnings per house
-    avg_earnings_per_house = total_earnings_per_house / len(houses) if len(houses) > 0 else 0.00
+    # Calculate the average earnings per house
+    avg_earnings_per_house = round(total_earnings_per_house / len(houses), 2) if len(houses) > 0 else 0.00
+
 
     # DEBUG: Print the total earnings per house and average earnings
     print(f"DEBUG: Total Earnings Across All Houses: {total_earnings_per_house}")
@@ -704,7 +706,9 @@ def export_to_excel(request):
 
         total_earnings_per_house += house_earnings_excl_vat
 
-    avg_earnings_per_house = total_earnings_per_house / len(houses) if len(houses) > 0 else 0.00
+    # Calculate the average earnings per house
+    avg_earnings_per_house = round(total_earnings_per_house / len(houses), 2) if len(houses) > 0 else 0.00
+
 
     # Create Excel Workbook
     wb = openpyxl.Workbook()
@@ -883,7 +887,9 @@ def generate_pdf_report(request):
         total_earnings_per_house += house_earnings_excl_vat
 
     # Calculate the average earnings per house
-    avg_earnings_per_house = total_earnings_per_house / len(houses) if len(houses) > 0 else 0.00
+    # Calculate the average earnings per house
+    avg_earnings_per_house = round(total_earnings_per_house / len(houses), 2) if len(houses) > 0 else 0.00
+
 
     # Get total VAT deductible (e.g., assume 19% for simplicity on total expenses)
     total_vat_deductible = total_net_expenses * Decimal('0.19')
