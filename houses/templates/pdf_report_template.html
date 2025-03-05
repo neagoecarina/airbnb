@@ -1,58 +1,103 @@
-{% extends 'master.html' %}
 {% load custom_filters %}
-{% block content %}
-<div class="container mt-4">
-    <h1 class="mb-4">Financial Overview</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Overview</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 10px;
+        }
+        h1, h3 {
+            text-align: center;
+        }
+        .summary {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        .summary div {
+            border: 1px solid black;
+            padding: 10px;
+            text-align: center;
+            width: 30%;
+            background-color: #f9f9f9;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
 
-    <!-- Time Period Selector -->
-    <div class="row mb-4">
-        <div class="col-md-4">
-            <label for="time-period">Select Time Period</label>
-            <select id="time-period" class="form-control">
-                <option value="monthly" {% if time_period == 'monthly' %}selected{% endif %}>This Month</option>
-                <option value="quarterly-q1" {% if time_period == 'quarterly-q1' %}selected{% endif %}>This Quarter (Jan-Mar)</option>
-                <option value="quarterly-q2" {% if time_period == 'quarterly-q2' %}selected{% endif %}>This Quarter (Apr-Jun)</option>
-                <option value="quarterly-q3" {% if time_period == 'quarterly-q3' %}selected{% endif %}>This Quarter (Jul-Sep)</option>
-                <option value="quarterly-q4" {% if time_period == 'quarterly-q4' %}selected{% endif %}>This Quarter (Oct-Dec)</option>
-                <option value="yearly" {% if time_period == 'yearly' %}selected{% endif %}>This Year</option>
-            </select>
-        </div>
-    </div>
+    <h1>Financial Overview</h1>
+
+    <!-- Time Period Display -->
+    <h3>Selected Time Period: 
+        {% if time_period == 'monthly' %}
+            This Month
+        {% elif time_period == 'quarterly-q1' %}
+            This Quarter (Jan-Mar)
+        {% elif time_period == 'quarterly-q2' %}
+            This Quarter (Apr-Jun)
+        {% elif time_period == 'quarterly-q3' %}
+            This Quarter (Jul-Sep)
+        {% elif time_period == 'quarterly-q4' %}
+            This Quarter (Oct-Dec)
+        {% elif time_period == 'yearly' %}
+            This Year
+        {% else %}
+            Unknown Period
+        {% endif %}
+    </h3>
 
     <!-- Summary Dashboard -->
-    <div class="row mb-4">
-        <div class="col-md-4">
-            <h3>Total Earnings</h3>
+    <div class="summary">
+        <div>
+            <h5>Total Earnings</h5>
             <p>${{ total_earnings }}</p>
         </div>
-        <div class="col-md-4">
-            <h3>Total Expenses</h3>
+        <div>
+            <h5>Total Expenses</h5>
             <p>${{ total_expenses }}</p>
         </div>
-        <div class="col-md-4">
-            <h3>Total Net Earnings</h3>
+        <div>
+            <h5>Total Net Earnings</h5>
             <p>${{ total_net_earnings }}</p>
         </div>
     </div>
 
-    <div class="row mb-4">
-        <div class="col-md-4">
-            <h3>Average Earnings per House</h3>
+    <div class="summary">
+        <div>
+            <h5>Average Earnings per House</h5>
             <p>${{ avg_earnings_per_house }}</p>
         </div>
-        <div class="col-md-4">
-            <h3>Total VAT Collected</h3>
+        <div>
+            <h5>Total VAT Collected</h5>
             <p>${{ total_vat_collected }}</p>
         </div>
-        <div class="col-md-4">
-            <h3>Total VAT Deductible</h3>
+        <div>
+            <h5>Total VAT Deductible</h5>
             <p>${{ total_vat_deductible }}</p>
         </div>
     </div>
 
     <!-- Expenses Breakdown Section -->
     <h3>Expense Breakdown</h3>
-    <table class="table table-striped">
+    <table>
         <thead>
             <tr>
                 <th>Expense Type</th>
@@ -81,7 +126,7 @@
 
     <!-- Earnings by House Section -->
     <h3>Earnings by House</h3>
-    <table class="table table-striped">
+    <table>
         <thead>
             <tr>
                 <th>House Name</th>
@@ -102,7 +147,7 @@
 
     <!-- VAT Overview Section -->
     <h3>VAT Overview</h3>
-    <table class="table table-striped">
+    <table>
         <thead>
             <tr>
                 <th>VAT Type</th>
@@ -125,23 +170,5 @@
         </tbody>
     </table>
 
-<!-- Export Data Section -->
-<!-- Export Data Section -->
-    <div class="mt-4">
-        <a href="{% url 'export_to_csv' %}?time_period={{ time_period }}" class="btn btn-primary">Export to CSV</a>
-        <a href="{% url 'export_to_excel' %}?time_period={{ time_period }}" class="btn btn-primary">Export to Excel</a>
-        <a href="{% url 'generate_pdf_report' %}?time_period={{ time_period }}" class="btn btn-primary">Generate PDF Report</a>
-    </div>
-
-
-    <script>
-        document.getElementById('time-period').addEventListener('change', function() {
-            let selectedPeriod = this.value;
-            // Update the URL with the selected time period
-            window.location.href = '?time_period=' + encodeURIComponent(selectedPeriod);
-        });
-
-    </script>
-    
-</div>
-{% endblock %}
+</body>
+</html>

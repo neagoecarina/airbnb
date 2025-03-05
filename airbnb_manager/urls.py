@@ -48,4 +48,9 @@ urlpatterns = [
     # Financial Overview Page
     path('houses/finance-overview/', views.financial_overview, name='financial_overview'),
     path('calculate-taxes/', views.calculate_taxes, name='calculate_taxes'),
+
+    path('export/csv/', views.export_to_csv, name='export_to_csv'),
+    path('export/excel/', views.export_to_excel, name='export_to_excel'),
+    
+    path('generate_pdf_report/', views.generate_pdf_report, name='generate_pdf_report'),
 ]

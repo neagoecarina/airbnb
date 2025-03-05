@@ -519,3 +519,188 @@ def calculate_taxes(request):
 
         # Return the JSON response with calculated taxes
         return JsonResponse(response_data)
+
+import csv
+import openpyxl
+from io import BytesIO
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+from weasyprint import HTML
+from .models import House, MonthlyExpense  # Modify with your actual models
+
+# Export to CSV
+def export_to_csv(request):
+    # Fetch the data you want to export
+    expenses = MonthlyExpense.objects.all()
+    
+    # Create a response with CSV content type
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="monthly_expenses.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['House', 'Date', 'Total Expense'])  # Header
+    
+    for expense in expenses:
+        writer.writerow([expense.house.name, expense.date, expense.total_expense])
+    
+    return response
+
+# Export to Excel
+def export_to_excel(request):
+    expenses = MonthlyExpense.objects.all()
+    
+    # Create an Excel workbook and sheet
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(['House', 'Date', 'Total Expense'])  # Header
+    
+    for expense in expenses:
+        ws.append([expense.house.name, expense.date, expense.total_expense])
+    
+    # Save to a BytesIO object to return as response
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="monthly_expenses.xlsx"'
+    wb.save(response)
+    
+    return response
+
+# Generate PDF Report
+from django.shortcuts import render
+from django.template.loader import render_to_string
+from django.http import HttpResponse
+from weasyprint import HTML
+from datetime import datetime, timedelta
+from decimal import Decimal
+from .models import MonthlyExpense, MonthlyEarning, UtilityExpense, BookingExpense, House, HouseEarning
+
+def generate_pdf_report(request):
+    # Get the selected time period from the URL or default to "monthly"
+    time_period = request.GET.get('time_period', 'monthly')
+
+    # Get the current month and year
+    current_month = datetime.now().month
+    current_year = datetime.now().year
+
+    # Determine the date range based on the time period
+    if time_period == 'monthly':
+        start_date = datetime(current_year, current_month, 1)
+        next_month = current_month + 1 if current_month < 12 else 1
+        next_month_year = current_year if current_month < 12 else current_year + 1
+        end_date = datetime(next_month_year, next_month, 1) - timedelta(days=1)
+    elif time_period == 'quarterly-q1':
+        start_date = datetime(current_year, 1, 1)
+        end_date = datetime(current_year, 3, 31)
+    elif time_period == 'quarterly-q2':
+        start_date = datetime(current_year, 4, 1)
+        end_date = datetime(current_year, 6, 30)
+    elif time_period == 'quarterly-q3':
+        start_date = datetime(current_year, 7, 1)
+        end_date = datetime(current_year, 9, 30)
+    elif time_period == 'quarterly-q4':
+        start_date = datetime(current_year, 10, 1)
+        end_date = datetime(current_year, 12, 31)
+    elif time_period == 'yearly':
+        start_date = datetime(current_year, 1, 1)
+        end_date = datetime(current_year, 12, 31)
+    else:
+        start_date = datetime(current_year, current_month, 1)
+        next_month = current_month + 1 if current_month < 12 else 1
+        next_month_year = current_year if current_month < 12 else current_year + 1
+        end_date = datetime(next_month_year, next_month, 1) - timedelta(days=1)
+
+    # Calculate total earnings for the selected time period
+    total_earnings = MonthlyEarning.objects.filter(
+        month_name__gte=start_date, 
+        month_name__lte=end_date
+    ).aggregate(Sum('total_earnings'))['total_earnings__sum'] or 0.00
+    total_earnings_decimal = Decimal(total_earnings)
+
+    # Calculate total VAT collected (19% of total earnings)
+    total_vat_collected = total_earnings_decimal * Decimal('0.19')
+
+    # Get total expenses for the selected time period
+    total_expenses = MonthlyExpense.objects.filter(
+        date__gte=start_date, 
+        date__lte=end_date
+    ).aggregate(Sum('total_expense'))['total_expense__sum'] or 0.00
+
+    # Get total utility expenses for the selected time period
+    total_utility_expenses = UtilityExpense.objects.filter(
+        date__gte=start_date, 
+        date__lte=end_date
+    ).aggregate(Sum('total_expense'))['total_expense__sum'] or 0.00
+
+    # Get total booking expenses for the selected time period
+    total_booking_expenses = BookingExpense.objects.filter(
+        date__gte=start_date, 
+        date__lte=end_date
+    ).aggregate(Sum('amount'))['amount__sum'] or 0.00
+
+    # Combine all expenses
+    total_net_expenses = Decimal(total_utility_expenses) + Decimal(total_booking_expenses)
+
+    # Calculate net earnings (total earnings - total expenses)
+    total_net_earnings = total_earnings_decimal - total_net_expenses
+
+    # Calculate earnings per house (Excluding and Including VAT)
+    houses = House.objects.all()
+    house_earnings_data = []
+    total_earnings_per_house = Decimal('0.00')
+
+    for house in houses:
+        house_earnings_excl_vat = HouseEarning.objects.filter(
+            house=house, 
+            month__year=current_year, 
+            month__month=current_month
+        ).aggregate(Sum('total_price'))['total_price__sum'] or Decimal('0.00')
+
+        # Calculate earnings including VAT (19% VAT)
+        house_earnings_incl_vat = house_earnings_excl_vat * Decimal('1.19')
+
+        house_earnings_data.append({
+            'house_name': house.name,
+            'total_earnings_excl_vat': house_earnings_excl_vat,
+            'total_earnings_incl_vat': house_earnings_incl_vat
+        })
+
+        # Add to total earnings across all houses
+        total_earnings_per_house += house_earnings_excl_vat
+
+    # Calculate the average earnings per house
+    avg_earnings_per_house = total_earnings_per_house / len(houses) if len(houses) > 0 else 0.00
+
+    # Get total VAT deductible (e.g., assume 19% for simplicity on total expenses)
+    total_vat_deductible = total_net_expenses * Decimal('0.19')
+
+    # Calculate net VAT
+    net_vat = total_vat_collected - total_vat_deductible
+
+    # Prepare the context for rendering the PDF
+    context = {
+        'total_earnings': total_earnings_decimal,
+        'total_expenses': total_expenses,
+        'total_utility_expenses': total_utility_expenses,
+        'total_booking_expenses': total_booking_expenses,
+        'total_net_earnings': total_net_earnings,
+        'total_vat_collected': total_vat_collected,
+        'total_vat_deductible': total_vat_deductible,
+        'houses': houses,
+        'total_net_expenses': total_net_expenses,
+        'net_vat': net_vat,
+        'house_earnings_data': house_earnings_data,
+        'avg_earnings_per_house': avg_earnings_per_house,
+        'time_period': time_period,
+    }
+
+    # Render HTML template for the PDF
+    html_string = render_to_string('pdf_report_template.html', context)
+
+    # Generate the PDF from HTML string
+    html = HTML(string=html_string)
+    pdf = html.write_pdf()
+
+    # Return PDF as response
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="financial_overview_report.pdf"'
+
+    return response
