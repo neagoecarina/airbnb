@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Airbnb Manager</title>
 
   <!-- Bootstrap CSS -->
@@ -11,28 +13,27 @@
 </head>
 <body>
 
+  <!-- Header and Navbar -->
   <header>
     <h1>Welcome to Airbnb Manager</h1>
     <nav>
       <a href="{% url 'home' %}" class="btn btn-primary">Go to Landing Page</a>
-
-      <!-- Make sure 'myhouse' is available in context -->
-
-
-      <a href="/houses/" class="btn btn-info">Make Booking</a>  <!-- Link to the list of houses -->
+      <a href="/houses/" class="btn btn-info">Make Booking</a>
       <a href="/utility-expenses/" class="btn btn-warning">Utility Expenses</a>
-      <a href="{% url 'manage_houses' %}" class="btn btn-success">Manage Houses</a> <!-- New "Manage Houses" button -->
+      <a href="{% url 'manage_houses' %}" class="btn btn-success">Manage Houses</a>
       <a href="{% url 'financial_overview' %}" class="btn btn-dark">Financial Overview</a>
       <a href="{% url 'booking_list' %}" class="btn btn-primary">View Bookings</a>
       <a href="/admin/" class="btn btn-secondary">Admin</a>
     </nav>
   </header>
 
+  <!-- Main Content Area -->
   <main>
     {% block content %}
     {% endblock %}
   </main>
 
+  <!-- Footer -->
   <footer>
     <p>&copy; 2025 Airbnb Manager</p>
   </footer>

@@ -176,7 +176,7 @@ from django.utils import timezone
 
 class UtilityExpense(models.Model):
     house = models.ForeignKey(House, on_delete=models.CASCADE)
-    date = models.DateField(default=timezone.now().date())  # Use .date() to extract only the date part
+    date = models.DateField(default=timezone.now)  # Use .date() to extract only the date part
     water_expense = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     electricity_expense = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total_expense = models.DecimalField(max_digits=10, decimal_places=2, default=0)
