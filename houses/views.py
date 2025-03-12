@@ -1019,47 +1019,100 @@ def generate_invoice(request, booking_id):
     p.save()
 
     return response
-
-
 from django.shortcuts import render
 from datetime import datetime, timedelta
-from .models import MonthlyEarning, HouseEarning, Booking
+from django.db.models import Sum, Count, Avg, F
+from .models import MonthlyEarning, HouseEarning, Booking, UtilityExpense, BookingExpense, House
 from django.utils import timezone
+from django.db.models import ExpressionWrapper, IntegerField
+from decimal import Decimal
+
 
 def landing_page(request):
-    # Get the current month and year
     current_month = datetime.now().month
     current_year = datetime.now().year
 
-    # Determine the date range for the current month
     start_date = datetime(current_year, current_month, 1)
     next_month = current_month + 1 if current_month < 12 else 1
     next_month_year = current_year if current_month < 12 else current_year + 1
     end_date = datetime(next_month_year, next_month, 1) - timedelta(days=1)
 
-    # Fetch total earnings for the current month
+    # Total earnings for the current month
     total_earnings = MonthlyEarning.objects.filter(
         month_name__gte=start_date, 
         month_name__lte=end_date
     ).aggregate(Sum('total_earnings'))['total_earnings__sum'] or 0.00
 
-    # Fetch house earnings for the current month
+    # Total expenses for the current month (sum of all expenses)
+    total_expenses = UtilityExpense.objects.filter(
+        date__gte=start_date, 
+        date__lte=end_date
+    ).aggregate(Sum('total_expense'))['total_expense__sum'] or 0.00
+
+    total_booking_expenses = BookingExpense.objects.filter(
+        date__gte=start_date, 
+        date__lte=end_date
+    ).aggregate(Sum('amount'))['amount__sum'] or 0.00
+
+    # Calculate net earnings (total earnings - total expenses)
+    total_net_expenses = Decimal(total_expenses) + Decimal(total_booking_expenses)
+    total_net_earnings = Decimal(total_earnings) - total_net_expenses
+
+    # House earnings for the current month
     house_earnings = HouseEarning.objects.filter(
         month__gte=start_date, 
         month__lte=end_date
     ).all()
 
-    # Fetch upcoming bookings
+    # Upcoming bookings
     upcoming_bookings = Booking.objects.filter(start_date__gte=datetime.now()).order_by("start_date")
 
-    # Pass the data to the template
+    # Occupancy Rate Calculation
+    total_nights_in_month = (end_date - start_date).days + 1
+    total_houses = House.objects.count()
+
+    booked_nights = Booking.objects.filter(
+        start_date__lte=end_date,
+        end_date__gte=start_date
+    ).annotate(nights=ExpressionWrapper(F('end_date') - F('start_date') + 1, output_field=IntegerField())) \
+    .aggregate(total_booked_nights=Sum('nights'))['total_booked_nights'] or 0
+
+    occupancy_rate = (booked_nights / (total_nights_in_month * total_houses) * 100) if total_houses > 0 else 0
+    occupancy_rate = round(occupancy_rate, 2)  # Now it works correctly!
+
+    # Most Frequently Booked Property
+    most_booked_property = Booking.objects.values('house__name').annotate(count=Count('id')).order_by('-count').first()
+    most_booked_property_name = most_booked_property['house__name'] if most_booked_property else "N/A"
+
+    # Average Booking Duration
+    avg_booking_duration = Booking.objects.annotate(nights=(F('end_date') - F('start_date') + timedelta(days=1))) \
+    .aggregate(Avg('nights'))['nights__avg'] or 0
+
+    # Ensure avg_booking_duration is a valid number
+    if isinstance(avg_booking_duration, timedelta):
+        avg_booking_duration = avg_booking_duration.days
+    avg_booking_duration = round(avg_booking_duration, 1)
+
+    # Recent Expenses (Fetching from UtilityExpense and BookingExpense)
+    recent_utility_expenses = UtilityExpense.objects.order_by('-date')[:5]
+    recent_booking_expenses = BookingExpense.objects.order_by('-date')[:5]
+
+    # Merge and sort expenses by date (keep latest 5)
+    recent_expenses = sorted(
+        list(recent_utility_expenses) + list(recent_booking_expenses),
+        key=lambda expense: expense.date,
+        reverse=True
+    )[:5]
+
     context = {
         'total_earnings': total_earnings,
+        'total_net_earnings': total_net_earnings,  # Pass net earnings (profit) to the template
         'house_earnings': house_earnings,
         'upcoming_bookings': upcoming_bookings,
+        'occupancy_rate': occupancy_rate,
+        'most_booked_property': most_booked_property_name,
+        'avg_booking_duration': avg_booking_duration,
+        'recent_expenses': recent_expenses,
     }
 
-    #return render(request, 'houses/landing.html', context)
-
     return render(request, 'landing.html', context)
-
