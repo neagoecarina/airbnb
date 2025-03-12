@@ -11,8 +11,8 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse
 from .models import House
 
-def landing_page(request):
-    return render(request, 'landing.html')  # This will load landing.html
+#def landing_page(request):
+    #return render(request, 'landing.html')  # This will load landing.html
 
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import House
@@ -1020,4 +1020,46 @@ def generate_invoice(request, booking_id):
 
     return response
 
+
+from django.shortcuts import render
+from datetime import datetime, timedelta
+from .models import MonthlyEarning, HouseEarning, Booking
+from django.utils import timezone
+
+def landing_page(request):
+    # Get the current month and year
+    current_month = datetime.now().month
+    current_year = datetime.now().year
+
+    # Determine the date range for the current month
+    start_date = datetime(current_year, current_month, 1)
+    next_month = current_month + 1 if current_month < 12 else 1
+    next_month_year = current_year if current_month < 12 else current_year + 1
+    end_date = datetime(next_month_year, next_month, 1) - timedelta(days=1)
+
+    # Fetch total earnings for the current month
+    total_earnings = MonthlyEarning.objects.filter(
+        month_name__gte=start_date, 
+        month_name__lte=end_date
+    ).aggregate(Sum('total_earnings'))['total_earnings__sum'] or 0.00
+
+    # Fetch house earnings for the current month
+    house_earnings = HouseEarning.objects.filter(
+        month__gte=start_date, 
+        month__lte=end_date
+    ).all()
+
+    # Fetch upcoming bookings
+    upcoming_bookings = Booking.objects.filter(start_date__gte=datetime.now()).order_by("start_date")
+
+    # Pass the data to the template
+    context = {
+        'total_earnings': total_earnings,
+        'house_earnings': house_earnings,
+        'upcoming_bookings': upcoming_bookings,
+    }
+
+    #return render(request, 'houses/landing.html', context)
+
+    return render(request, 'landing.html', context)
 

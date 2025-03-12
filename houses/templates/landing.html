@@ -1,7 +1,166 @@
 {% extends 'master.html' %}
 
 {% block content %}
-  <h1>Welcome to My Project</h1>
-  <p>This is the landing page for my website.</p>
-  <a href="{% url 'houses_list' %}" class="btn btn-primary">View Houses</a>
+{% load static %}
+<!-- FullCalendar 3.x on the Dashboard -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/fullcalendar.min.css" rel="stylesheet">
+
+<!-- Use jQuery 3.6.0 and Moment.js -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+
+<!-- FullCalendar -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/locale/en-gb.js"></script>
+
+<style>
+    .container {
+        display: flex;
+        justify-content: space-between;
+        gap: 30px;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    /* Left side (1/3 of the screen) */
+    .earnings {
+        width: 33%;
+        padding-right: 20px;
+        box-sizing: border-box;
+    }
+
+    /* Right side (2/3 of the screen) */
+    .right-side {
+        width: 66%;
+        box-sizing: border-box;
+    }
+
+    .bookings-calendar {
+        margin-bottom: 40px;
+    }
+
+    #calendar {
+        width: 100%;
+        margin: 0 auto;
+        padding: 10px;
+        box-sizing: border-box;
+    }
+
+    .section-title {
+        font-size: 1.8rem;
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+
+    .earnings ul, .bookings-calendar ul {
+        padding-left: 20px;
+    }
+
+    .earnings li, .bookings-calendar li {
+        list-style: disc;
+    }
+</style>
+
+<h1>Dashboard</h1>
+
+<div class="container">
+    <!-- Left side (earnings and finance) -->
+    <div class="earnings">
+        <section>
+            <h2 class="section-title">Revenue Overview</h2>
+            <p>Total Earnings: ${{ total_earnings }}</p>
+
+            <h3>House Earnings</h3>
+            {% if house_earnings %}
+                <ul>
+                    {% for earning in house_earnings %}
+                        <li>{{ earning.house.name }}: ${{ earning.total_price }}</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>No earnings data available.</p>
+            {% endif %}
+        </section>
+    </div>
+
+    <!-- Right side (upcoming bookings and calendar) -->
+    <div class="right-side">
+        <!-- Upcoming Bookings -->
+        <section class="bookings-calendar">
+            <h2 class="section-title">Upcoming Bookings</h2>
+            {% if upcoming_bookings %}
+                <ul>
+                    {% for booking in upcoming_bookings %}
+                        <li>{{ booking.house.name }}: {{ booking.start_date }} to {{ booking.end_date }}</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>No upcoming bookings.</p>
+            {% endif %}
+        </section>
+
+        <!-- Calendar View -->
+        <section>
+            <h2 class="section-title">Calendar View</h2>
+            <div id="calendar"></div>
+        </section>
+    </div>
+</div>
+
+<script>
+  $(document).ready(function() {
+      if (typeof $.fn.fullCalendar === "function") {
+          console.log('FullCalendar loaded successfully!');
+      } else {
+          console.error('FullCalendar not loaded properly.');
+      }
+
+      // FullCalendar initialization
+      $('#calendar').fullCalendar({
+          header: {
+              left: 'prev,next today',
+              center: 'title',
+              right: 'dayGridMonth,timeGridWeek,timeGridDay'
+          },
+          locale: 'en-gb', // Set the locale explicitly
+          events: function(start, end, timezone, callback) {
+              var events = [];
+              {% for booking in upcoming_bookings %}
+              var endDate = '{{ booking.end_date|date:"Y-m-d" }}';
+              var newEndDate = moment(endDate).add(1, 'days').format('YYYY-MM-DD'); // Add 1 day to the end date
+
+              // Generate a pastel color similar to the provided tones
+              var eventColor = generatePastelColor();
+
+                  events.push({
+                      title: '{{ booking.house.name }}',
+                      start: '{{ booking.start_date|date:"Y-m-d" }}',
+                      end: newEndDate,
+                      color: eventColor,  // Set the generated color
+                  });
+              {% endfor %}
+
+              console.log(events);  // Log the events array to the console
+              callback(events);
+          },
+          initialView: 'dayGridMonth',
+          height: 600,
+          eventLimit: true
+      });
+
+      // Function to generate a pastel color similar to the provided tones
+      function generatePastelColor() {
+          // Soft tones close to your provided palette
+          var colors = [
+              '#f55c7a' , '#f57c73' , '#f68c70' , '#f6ac69' , '#f6bc66', 
+              '#f7a7a0', '#d9b5a5', '#a5d1e3', '#8fc2a8', '#b5d1e1'
+          ];
+
+          // Pick a random color from the array of pastel tones
+          var randomIndex = Math.floor(Math.random() * colors.length);
+          return colors[randomIndex];
+      }
+  });
+</script>
+
 {% endblock %}

@@ -58,3 +58,4 @@ urlpatterns = [
     path('bookings/', views.booking_list, name='booking_list'),
     path('generate_invoice/<int:booking_id>/', views.generate_invoice, name='generate_invoice'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
