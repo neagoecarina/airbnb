@@ -1,5 +1,7 @@
 {% extends 'master.html' %}
 {% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <div class="container mt-4">
     <h1 class="mb-4">Expense Overview</h1>
 
@@ -44,28 +46,93 @@
 
     <button id="update-filters" class="btn btn-primary">Update</button>
 
-    <!-- Expense Summary -->
-    <div class="row mt-4">
-        <div class="col-md-4">
-            <h3>Total Expenses</h3>
-            <p>${{ total_expenses|floatformat:2 }}</p>
-        </div>
-        <div class="col-md-4">
-            <h3>Total Utility Expenses</h3>
-            <p>${{ total_utility_expenses|floatformat:2 }}</p>
-        </div>
-        <div class="col-md-4">
-            <h3>Total Booking Expenses</h3>
-            <p>${{ total_booking_expenses|floatformat:2 }}</p>
-        </div>
+    <!-- Expense Summary Table -->
+    <div class="mt-4">
+        <h3>Expense Breakdown</h3>
+        <table class="table table-bordered table-striped">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Utility Expenses -->
+                <tr>
+                    <td><strong>Total Utility Expenses</strong></td>
+                    <td>${{ total_utility_expenses|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                    <td>Water</td>
+                    <td>${{ total_water_expenses|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                    <td>Electricity</td>
+                    <td>${{ total_electricity_expenses|floatformat:2 }}</td>
+                </tr>
+                
+                <!-- Booking Expenses -->
+                <tr>
+                    <td><strong>Total Booking Expenses</strong></td>
+                    <td>${{ total_booking_expenses|floatformat:2 }}</td>
+                </tr>
+
+
+                <!-- Total Expenses -->
+                    <tr style="background-color: #e9d9fa;">  <!-- Light gray color -->
+
+                    <td><strong>Total Expenses</strong></td>
+                    <td><strong>${{ total_expenses|floatformat:2 }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 
     <!-- VAT Breakdown -->
     <h3>VAT Overview</h3>
     <p>Total VAT Deductible: ${{ total_vat_deductible|floatformat:2 }}</p>
+
+   <!-- Graph -->
+ <!-- Graph -->
+ <div class="mt-4">
+    <h3>Expenses by House for Selected Month</h3>
+    <canvas id="expensesGraph" width="400" height="200"></canvas>
+</div>
 </div>
 
 <script>
+
+// Script to handle the chart
+const ctx = document.getElementById('expensesGraph').getContext('2d');
+
+// Prepare data for the chart
+const chartData = {
+    labels: [{% for house in house_expenses %}"{{ house.name }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+    datasets: [{
+        label: 'Total Expenses',
+        data: [{% for house in house_expenses %}{{ house.total_expenses|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        borderColor: 'rgba(75, 192, 192, 1)',
+        borderWidth: 1
+    }]
+};
+
+const chartOptions = {
+    responsive: true,
+    scales: {
+        y: {
+            beginAtZero: true
+        }
+    }
+};
+
+const expensesChart = new Chart(ctx, {
+    type: 'bar',
+    data: chartData,
+    options: chartOptions
+});
+
+// Update filters button functionality
 document.getElementById("update-filters").addEventListener("click", function() {
     let house = document.getElementById("house").value;
     let month = document.getElementById("month").value;
@@ -76,6 +143,10 @@ document.getElementById("update-filters").addEventListener("click", function() {
     
     window.location.href = url;
 });
+
+
 </script>
+
+
 
 {% endblock %}
