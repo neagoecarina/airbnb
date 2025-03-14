@@ -64,17 +64,18 @@
             <tr>
                 <td>Utility Expenses</td>
                 <td>${{ total_utility_expenses }}</td>
-                <td>${{ total_utility_expenses|multiply:0.19 }}</td>
+                <td>${{ total_utility_expenses|multiply:0.19|floatformat:2 }}</td>
             </tr>
             <tr>
                 <td>Booking Expenses (Cleaning Fees)</td>
                 <td>${{ total_booking_expenses }}</td>
-                <td>${{ total_booking_expenses|multiply:0.19 }}</td>
+                <td>${{ total_booking_expenses|multiply:0.19|floatformat:2 }}</td>
+
             </tr>
             <tr>
                 <td><strong>Total Expenses</strong></td>
                 <td><strong>${{ total_net_expenses }}</strong></td>
-                <td><strong>${{ total_net_expenses|multiply:0.19 }}</strong></td>
+                <td><strong>${{ total_net_expenses|multiply:0.19|floatformat:2 }}</strong></td>
             </tr>
         </tbody>
     </table>

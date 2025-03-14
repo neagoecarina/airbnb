@@ -1116,3 +1116,98 @@ def landing_page(request):
     }
 
     return render(request, 'landing.html', context)
+
+# views.py
+
+from datetime import datetime
+import calendar
+from decimal import Decimal
+from django.shortcuts import render
+from .models import House, BookingExpense, UtilityExpense
+from django.db.models import Sum
+
+def expense_overview(request):
+    # Get the current date
+    current_date = datetime.now()
+    current_month = current_date.month
+    current_year = current_date.year
+
+    # Get house_id from the URL parameters (convert to integer if exists)
+    house_id = request.GET.get('house', None)
+    house_id = int(house_id) if house_id and house_id.isdigit() else None
+
+    # Get the selected month and year from the URL parameters
+    selected_month = int(request.GET.get('month', current_month))
+    selected_year = int(request.GET.get('year', current_year))
+
+    # Get list of houses
+    houses = House.objects.all()
+
+    # Prepare list of months for the dropdown
+    months = [{'value': i, 'name': calendar.month_name[i]} for i in range(1, 13)]
+
+    # Prepare list of years for the dropdown (next 5 years + current year)
+    years = [current_year + i for i in range(6)]
+
+    # Function to calculate total expenses
+    def calculate_total_expenses(house_id, selected_month, selected_year):
+        # Filter booking expenses
+        booking_filter = {
+            'date__year': selected_year,
+            'date__month': selected_month
+        }
+        if house_id:
+            booking_filter['booking__house_id'] = house_id
+
+        booking_expenses = BookingExpense.objects.filter(**booking_filter).aggregate(total=Sum('amount'))['total'] or 0
+
+        # Filter utility expenses
+        utility_filter = {
+            'date__year': selected_year,
+            'date__month': selected_month
+        }
+        if house_id:
+            utility_filter['house_id'] = house_id
+
+        utility_expenses = UtilityExpense.objects.filter(**utility_filter).aggregate(total=Sum('total_expense'))['total'] or 0
+
+        return booking_expenses + utility_expenses
+
+    # Function to calculate VAT deductible
+    def calculate_vat_deductible(house_id, selected_month, selected_year):
+        total_expenses = calculate_total_expenses(house_id, selected_month, selected_year)
+        vat_rate = Decimal('0.19')
+        return total_expenses * vat_rate
+
+    # Calculate total expenses
+    total_expenses = calculate_total_expenses(house_id, selected_month, selected_year)
+
+    total_utility_expenses = UtilityExpense.objects.filter(
+        date__year=selected_year,
+        date__month=selected_month,
+        **({'house_id': house_id} if house_id else {})
+    ).aggregate(total=Sum('total_expense'))['total'] or 0
+
+    total_booking_expenses = BookingExpense.objects.filter(
+        date__year=selected_year,
+        date__month=selected_month,
+        **({'booking__house_id': house_id} if house_id else {})
+    ).aggregate(total=Sum('amount'))['total'] or 0
+
+    total_vat_deductible = calculate_vat_deductible(house_id, selected_month, selected_year)
+
+    # Pass variables to the template
+    context = {
+        'houses': houses,
+        'house_id': house_id,
+        'months': months,
+        'selected_month': selected_month,
+        'years': years,
+        'selected_year': selected_year,
+        'total_expenses': total_expenses,
+        'total_utility_expenses': total_utility_expenses,
+        'total_booking_expenses': total_booking_expenses,
+        'total_vat_deductible': total_vat_deductible,
+    }
+
+    return render(request, 'houses/expense_overview.html', context)

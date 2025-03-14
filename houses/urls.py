@@ -21,7 +21,9 @@ urlpatterns = [
      # Financial Overview Page
     path('houses/finance-overview/', views.financial_overview, name='financial_overview'),
     path('calculate-taxes/', views.calculate_taxes, name='calculate_taxes'),
- 
+
+    path('houses/expense-overview/', views.expense_overview, name='expense_overview'),
+
     path('bookings/', views.booking_list, name='booking_list'),
     path('generate_invoice/<int:booking_id>/', views.generate_invoice, name='generate_invoice'),
 

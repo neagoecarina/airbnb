@@ -1,0 +1,81 @@
+{% extends 'master.html' %}
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Expense Overview</h1>
+
+    <div class="row mb-3">
+        <!-- House Selector -->
+        <div class="col-md-4">
+            <label for="house">Select House</label>
+            <select id="house" class="form-control">
+                <option value="" {% if house_id is None %}selected{% endif %}>All Houses</option>
+                {% for house in houses %}
+                    <option value="{{ house.id }}" {% if house.id == house_id %}selected{% endif %}>
+                        {{ house.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Month Selector -->
+        <div class="col-md-4">
+            <label for="month">Select Month</label>
+            <select id="month" class="form-control">
+                {% for month in months %}
+                    <option value="{{ month.value }}" {% if month.value == selected_month %}selected{% endif %}>
+                        {{ month.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Year Selector -->
+        <div class="col-md-4">
+            <label for="year">Select Year</label>
+            <select id="year" class="form-control">
+                {% for year in years %}
+                    <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>
+                        {{ year }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <button id="update-filters" class="btn btn-primary">Update</button>
+
+    <!-- Expense Summary -->
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <h3>Total Expenses</h3>
+            <p>${{ total_expenses|floatformat:2 }}</p>
+        </div>
+        <div class="col-md-4">
+            <h3>Total Utility Expenses</h3>
+            <p>${{ total_utility_expenses|floatformat:2 }}</p>
+        </div>
+        <div class="col-md-4">
+            <h3>Total Booking Expenses</h3>
+            <p>${{ total_booking_expenses|floatformat:2 }}</p>
+        </div>
+    </div>
+
+    <!-- VAT Breakdown -->
+    <h3>VAT Overview</h3>
+    <p>Total VAT Deductible: ${{ total_vat_deductible|floatformat:2 }}</p>
+</div>
+
+<script>
+document.getElementById("update-filters").addEventListener("click", function() {
+    let house = document.getElementById("house").value;
+    let month = document.getElementById("month").value;
+    let year = document.getElementById("year").value;
+    
+    let url = `?month=${month}&year=${year}`;
+    if (house) url += `&house=${house}`;
+    
+    window.location.href = url;
+});
+</script>
+
+{% endblock %}
