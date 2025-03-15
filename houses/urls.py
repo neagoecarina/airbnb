@@ -24,6 +24,9 @@ urlpatterns = [
 
     path('houses/expense-overview/', views.expense_overview, name='expense_overview'),
 
+    #House Compare
+    path('houses/house-compare/', views.house_compare, name='house_compare'),
+
     path('bookings/', views.booking_list, name='booking_list'),
     path('generate_invoice/<int:booking_id>/', views.generate_invoice, name='generate_invoice'),
 

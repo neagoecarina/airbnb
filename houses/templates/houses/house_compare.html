@@ -1,0 +1,139 @@
+{% extends 'master.html' %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+function updateFilters() {
+    let house = document.getElementById("house").value;
+    let month = document.getElementById("month").value;
+    let year = document.getElementById("year").value;
+
+    let urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('house', house);
+    urlParams.set('month', month);
+    urlParams.set('year', year);
+
+    window.location.search = urlParams.toString();
+}
+</script>
+
+<div class="container mt-4">
+    <h1 class="mb-4">House Comparison</h1>
+
+    <!-- Filter Section -->
+    <div class="row mb-3">
+        <!-- House Selector -->
+        <div class="col-md-4">
+            <label for="house">Select House</label>
+            <select id="house" class="form-control" onchange="updateFilters()">
+                <option value="" {% if house_id is None %}selected{% endif %}>All Houses</option>
+                {% for house in houses %}
+                    <option value="{{ house.id }}" {% if house.id == house_id %}selected{% endif %}>
+                        {{ house.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Month Selector -->
+        <div class="col-md-4">
+            <label for="month">Select Month</label>
+            <select id="month" class="form-control" onchange="updateFilters()">
+                {% for month in months %}
+                    <option value="{{ month.value }}" {% if month.value == selected_month %}selected{% endif %}>
+                        {{ month.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Year Selector -->
+        <div class="col-md-4">
+            <label for="year">Select Year</label>
+            <select id="year" class="form-control" onchange="updateFilters()">
+                {% for year in years %}
+                    <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>
+                        {{ year }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <!-- Comparison Table -->
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>House Name</th>
+                <th>Monthly Earnings (€)</th>
+                <th>Monthly Expenses (€)</th>
+                <th>Monthly Profit (€)</th>
+            </tr>
+        </thead>
+        <tbody>
+          {% for house_data in house_profit_data %}
+          <tr>
+              <td>{{ house_data.house.name }}</td> <!-- Correct way to get the house name -->
+              <td>{{ house_data.total_earnings|default:"0.00"|floatformat:2 }}</td>
+              <td>{{ house_data.total_expenses|default:"0.00"|floatformat:2 }}</td>
+              <td>{{ house_data.profit|default:"0.00"|floatformat:2 }}</td>
+          </tr>
+          {% endfor %}
+      </tbody>
+      
+    </table>
+    <!-- Chart Section -->
+<div class="mt-5">
+  <h2>House Profits Overview</h2>
+  <canvas id="profitChart"></canvas>
+</div>
+
+
+<script>
+  // Get profit data from Django context
+  let houseNames = [];
+  let houseProfits = [];
+  let profitColors = [];
+
+  {% for house_data in house_profit_data %}
+      houseNames.push("{{ house_data.house.name }}");
+      houseProfits.push({{ house_data.profit }});
+
+      // Conditional color based on profit value
+      if ({{ house_data.profit }} < 0) {
+          profitColors.push('rgba(255, 99, 132, 0.6)');  // Light pink for negative profits
+      } else {
+          profitColors.push('rgba(75, 192, 192, 0.6)');  // Light green for positive profits
+      }
+  {% endfor %}
+
+  // Render chart using Chart.js
+  let ctx = document.getElementById('profitChart').getContext('2d');
+  new Chart(ctx, {
+      type: 'bar',  // Bar chart type
+      data: {
+          labels: houseNames,
+          datasets: [{
+              label: 'Monthly Profit (€)',
+              data: houseProfits,
+              backgroundColor: profitColors,  // Use the conditional colors
+              borderColor: 'rgba(54, 162, 235, 1)',  // Border color for bars
+              borderWidth: 1
+          }]
+      },
+      options: {
+          responsive: true,
+          scales: {
+              y: {
+                  beginAtZero: true
+              }
+          }
+      }
+  });
+</script>
+
+
+</div>
+
+{% endblock %}

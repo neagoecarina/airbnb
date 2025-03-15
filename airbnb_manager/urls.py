@@ -53,6 +53,8 @@ urlpatterns = [
 
     # Expense Overview Page (new path)
     path('houses/expense-overview/', views.expense_overview, name='expense_overview'),  # New route for expense overview
+    #House Compare
+    path('houses/house-compare/', views.house_compare, name='house_compare'),
 
     path('export/csv/', views.export_to_csv, name='export_to_csv'),
     path('export/excel/', views.export_to_excel, name='export_to_excel'),

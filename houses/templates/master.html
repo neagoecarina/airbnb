@@ -17,15 +17,18 @@
   <header>
     <h1>Welcome to Airbnb Manager</h1>
     <nav>
-      <a href="{% url 'home' %}" class="btn btn-primary">Go to Landing Page</a>
-      <a href="/houses/" class="btn btn-info">Make Booking</a>
-      <a href="/utility-expenses/" class="btn btn-warning">Utility Expenses</a>
-      <a href="{% url 'manage_houses' %}" class="btn btn-success">Manage Houses</a>
-      <a href="{% url 'financial_overview' %}" class="btn btn-dark">Financial Overview</a>
-      <a href="{% url 'expense_overview' %}" class="btn btn-secondary">Expense Overview</a> <!-- New button for Expense Overview -->
-      <a href="{% url 'booking_list' %}" class="btn btn-primary">View Bookings</a>
-      <a href="/admin/" class="btn btn-secondary">Admin</a>
+      <a href="{% url 'home' %}" class="btn" style="background-color: #F4A6C6; color: #fff;">Go to Landing Page</a>
+      <a href="/houses/" class="btn" style="background-color: #FFDD80; color: #fff;">Make Booking</a>
+      <a href="/utility-expenses/" class="btn" style="background-color: #FFCC66; color: #fff;">Utility Expenses</a>
+      <a href="{% url 'manage_houses' %}" class="btn" style="background-color: #FF8F8F; color: #fff;">Manage Houses</a>
+      <a href="{% url 'financial_overview' %}" class="btn" style="background-color: #FFB38C; color: #fff;">Financial Overview</a>
+      <a href="{% url 'expense_overview' %}" class="btn" style="background-color: #FF8FB3; color: #fff;">Expense Overview</a>
+      <a href="{% url 'house_compare' %}" class="btn" style="background-color: #FFB399; color: #fff;">House Compare</a>
+      <a href="{% url 'booking_list' %}" class="btn" style="background-color: #FFD38C; color: #fff;">View Bookings</a>
+      <a href="/admin/" class="btn" style="background-color: #FFB84D; color: #fff;">Admin</a>
     </nav>
+    
+
   </header>
 
   <!-- Main Content Area -->

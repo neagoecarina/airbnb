@@ -1261,3 +1261,82 @@ def expense_overview(request):
     }
 
     return render(request, 'houses/expense_overview.html', context)
+
+
+from datetime import datetime
+from django.shortcuts import render
+from django.db.models import Sum
+from decimal import Decimal
+import calendar
+from .models import House, Booking, MonthlyExpense
+
+def calculate_profit(house_id=None, month=None, year=None):
+    filters = {}
+
+    if house_id:
+        filters["house_id"] = house_id
+    if year:
+        filters["start_date__year"] = year
+    if month and month != 0:  # Skip filtering by month if "All Time" (0) is selected
+        filters["start_date__month"] = month
+
+    # Get total earnings by summing all bookings per house and month/year
+    total_earnings = Booking.objects.filter(**filters).aggregate(total=Sum('booking_earnings'))['total'] or Decimal('0.00')
+
+    # Get total expenses for the same house and month/year
+    expense_filters = {"house_id": house_id, "date__year": year}
+    if month and month != 0:
+        expense_filters["date__month"] = month
+
+    total_expenses = MonthlyExpense.objects.filter(**expense_filters) \
+        .aggregate(total=Sum('total_expense'))['total'] or Decimal('0.00')
+
+    # Calculate profit
+    profit = total_earnings - total_expenses
+
+    return {
+        "total_earnings": total_earnings,
+        "total_expenses": total_expenses,
+        "profit": profit
+    }
+
+def house_compare(request):
+    current_date = datetime.now()
+    current_month = current_date.month
+    current_year = current_date.year
+
+    house_id = request.GET.get('house')
+    house_id = int(house_id) if house_id and house_id.isdigit() else None
+
+    selected_month = int(request.GET.get('month', current_month))
+    selected_year = int(request.GET.get('year', current_year))
+
+    houses = House.objects.all()
+
+    months = [{'value': i, 'name': calendar.month_name[i]} for i in range(1, 13)]
+    months.insert(0, {'value': 0, 'name': 'All Time'})  # Added "All Time" option
+
+    years = [current_year + i for i in range(6)]
+
+    # Calculate profit for each house
+    house_profit_data = []
+    for house in houses:
+        profit_data = calculate_profit(house_id=house.id, month=selected_month, year=selected_year)
+        house_profit_data.append({
+            "house": house,
+            "total_earnings": profit_data["total_earnings"],
+            "total_expenses": profit_data["total_expenses"],
+            "profit": profit_data["profit"]
+        })
+
+    context = {
+        'houses': houses,
+        'house_id': house_id,
+        'months': months,
+        'selected_month': selected_month,
+        'years': years,
+        'selected_year': selected_year,
+        'house_profit_data': house_profit_data,  # Now defined!
+    }
+
+    return render(request, 'houses/house_compare.html', context)
