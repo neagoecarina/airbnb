@@ -165,3 +165,7 @@ class MonthlyExpenseAdmin(admin.ModelAdmin):
     total_expense_with_vat.short_description = 'Total Expense with VAT'
 
 
+from django.contrib import admin
+from .models import Discount
+
+admin.site.register(Discount)

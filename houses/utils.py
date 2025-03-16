@@ -27,3 +27,31 @@ def fetch_vat_rate(amount, country_code):
             return None  # If something goes wrong with the API response
     else:
         return None  # If the API request fails
+    
+
+    # utils.py
+
+def get_discounted_price(house_id, start_date, end_date):
+    # Delay the import to avoid circular import issue
+    from .models import Discount, House  # Import inside the function
+
+    # Get the house object to access its price
+    house = House.objects.get(id=house_id)
+    
+    # Original price is the price of the house
+    original_price = house.price
+    
+    # Get all discounts applicable during the given period
+    discounts = Discount.objects.filter(
+        house_id=house_id,
+        start_date__lte=end_date,
+        end_date__gte=start_date
+    )
+    
+    # Apply any discounts if applicable
+    for discount in discounts:
+        original_price *= (1 - discount.discount_percentage / 100)
+
+    return original_price
+
+

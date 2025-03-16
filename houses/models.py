@@ -29,6 +29,22 @@ from django.db import models, transaction
 from django.db.models import Sum
 from datetime import date
 
+from decimal import Decimal
+from django.db import models, transaction
+from datetime import date
+from .utils import get_discounted_price  # Import your discount function
+
+from django.db import transaction
+from django.db.models import Sum
+from decimal import Decimal
+from datetime import date
+from decimal import Decimal
+from datetime import timedelta
+from django.db import transaction
+from django.utils import timezone
+
+from datetime import timedelta
+
 class Booking(models.Model):
     house = models.ForeignKey(House, on_delete=models.CASCADE, related_name='bookings')
     customer_name = models.CharField(max_length=255, default="Unknown")
@@ -37,110 +53,140 @@ class Booking(models.Model):
     booking_earnings = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))  # New field for earnings
     cleaning_fee = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('50.00'))  # Default cleaning fee
 
+
     def __str__(self):
         return f"Booking for {self.house.name} by {self.customer_name}"
 
-    def save(self, *args, **kwargs):
-    # Remove or comment out the debug exception line
-    # raise Exception("Debug: Save method is running!")  # Remove this line
 
+    def save(self, *args, **kwargs):
         try:
-                with transaction.atomic():
-                 print("🔵 Starting save operation.")
+            with transaction.atomic():
+                print("🔵 Starting save operation.")
 
                 # Ensure price_per_night is a Decimal before calculation
                 price_per_night = Decimal(self.house.price)
                 print(f"✅ House price per night: {price_per_night}")
 
-                total_days = (self.end_date - self.start_date).days + 1  # Include the start day
-                print(f"✅ Total Days: {total_days}")
 
-                # Calculate booking earnings
-                self.booking_earnings = Decimal(total_days * price_per_night)
+                # Get the discount period, if any
+                discount_period = Discount.objects.filter(
+                    house=self.house,
+                    start_date__lte=self.end_date,
+                    end_date__gte=self.start_date
+                ).first()
+
+                total_discounted_earnings = Decimal('0.00')
+                total_non_discounted_earnings = Decimal('0.00')
+
+                # Iterate over each day in the booking period and apply the correct pricing
+                current_date = self.start_date
+                while current_date <= self.end_date:
+                    if discount_period and discount_period.start_date <= current_date <= discount_period.end_date:
+                        # Apply discount if the current date falls within the discount period
+                        discounted_price_per_night = price_per_night * (1 - (discount_period.discount_percentage / Decimal('100')))
+                        total_discounted_earnings += discounted_price_per_night
+                        print(f"✅ Discount applied on {current_date}: {discounted_price_per_night}")
+                    else:
+                        # No discount, use the original price
+                        total_non_discounted_earnings += price_per_night
+                        print(f"✅ No discount on {current_date}: {price_per_night}")
+
+                    # Move to the next day
+                    current_date += timedelta(days=1)
+
+                # Total earnings is the sum of both discounted and non-discounted earnings
+                self.booking_earnings = total_discounted_earnings + total_non_discounted_earnings
                 print(f"✅ Calculated Booking Earnings: {self.booking_earnings}")
 
                 # Ensure the value is correct
                 if self.booking_earnings == 0:
-                        raise Exception("❌ Booking earnings calculated as zero.")
+                    raise Exception("❌ Booking earnings calculated as zero.")
 
                 # Save the booking after all fields are assigned
                 super().save(*args, **kwargs)
                 print("✅ Booking saved successfully.")
 
                 if not self.pk:
-                        raise Exception("❌ Booking wasn't saved. No primary key (pk) set.")
+                    raise Exception("❌ Booking wasn't saved. No primary key (pk) set.")
 
-                # Create the Cleaning Fee Expense for the booking
-                booking_expense = BookingExpense.objects.create(
+
+                # Create the Cleaning Fee Expense for the booking (Only once!)
+                if not BookingExpense.objects.filter(booking=self).exists():
+                    booking_expense = BookingExpense.objects.create(
                         booking=self,
                         expense_type="Cleaning Fee",
                         amount=self.cleaning_fee,
                         date=self.start_date  # Pass full date here
-                )
-                print(f"✅ Cleaning fee expense created: {booking_expense.amount}")
+                    )
+                    print(f"✅ Cleaning fee expense created: {booking_expense.amount}")
+                else:
+                    print("⚠️ Cleaning fee expense already exists for this booking.")
+
 
                 # Get the first day of the month for consistency
                 first_day_of_month = date(self.start_date.year, self.start_date.month, 1)
 
-                # --- Update Monthly Expenses ---
-                from django.db.models import Sum
 
-                # Sum all cleaning fees for this house and month
+                # --- Update Monthly Expenses ---
                 total_booking_expenses = BookingExpense.objects.filter(
-                        booking__house=self.house,
-                        date__year=self.start_date.year,  # Use `date__year`
-                        date__month=self.start_date.month  # Use `date__month`
+                    booking__house=self.house,
+                    date__year=self.start_date.year,  # Use `date__year`
+                    date__month=self.start_date.month  # Use `date__month`
                 ).aggregate(total=Sum('amount'))['total'] or 0
 
-                # Sum all utility expenses for this house and month
+
                 total_utilities = UtilityExpense.objects.filter(
-                        house=self.house,
-                        date__year=self.start_date.year,
-                        date__month=self.start_date.month
+                    house=self.house,
+                    date__year=self.start_date.year,
+                    date__month=self.start_date.month
                 ).aggregate(total=Sum('total_expense'))['total'] or 0
+
 
                 print(f"✅ Total booking expenses: {total_booking_expenses}")
                 print(f"✅ Total utility expenses: {total_utilities}")
 
+
                 # Calculate total expenses for the month
                 total_expenses = total_booking_expenses + total_utilities
 
+
                 # Create or update MonthlyExpense
                 monthly_expense, created = MonthlyExpense.objects.get_or_create(
-                        house=self.house,
-                        date=first_day_of_month,
-                        defaults={"total_expense": total_expenses}
+                    house=self.house,
+                    date=first_day_of_month,
+                    defaults={"total_expense": total_expenses}
                 )
 
+
                 if not created:
-                        monthly_expense.total_expense = total_expenses
-                        monthly_expense.save()
-                        print("✅ Monthly expenses updated.")
+                    monthly_expense.total_expense = total_expenses
+                    monthly_expense.save()
+                    print("✅ Monthly expenses updated.")
+
 
                 # --- Update Earnings ---
-                # Get or create the MonthlyEarning for the month and house
                 monthly_earnings = MonthlyEarning.get_or_create_earnings_for_month(first_day_of_month.strftime("%Y-%m"))
                 monthly_earnings.total_earnings += self.booking_earnings
                 monthly_earnings.save()
                 print("✅ Monthly earnings updated.")
 
-                # Get or create the YearlyEarnings for the year and house
+
                 yearly_earnings = YearlyEarning.get_or_create_yearly_earnings(str(self.start_date.year))
                 yearly_earnings.total_earnings = Decimal(yearly_earnings.total_earnings)  # Convert to Decimal if needed
                 yearly_earnings.total_earnings += self.booking_earnings
                 yearly_earnings.save()
                 print("✅ Yearly earnings updated.")
 
-                # Get or create the HouseEarnings for the house and month
+
                 house_earnings = HouseEarning.get_or_create_house_earnings(self.house, first_day_of_month)
                 house_earnings.total_price += self.booking_earnings
                 house_earnings.save()
                 print("✅ House earnings updated.")
 
-        except Exception as e:
-                print(f"❌ Error during booking save: {e}")
-                raise  # Ensure the exception is raised to avoid silent failures
 
+        except Exception as e:
+            print(f"❌ Error during booking save: {e}")
+            raise  # Ensure the exception is raised to avoid silent failures
 
 from decimal import Decimal
 
@@ -304,3 +350,22 @@ class MonthlyExpense(models.Model):
             monthly_expense.save()
 
         return monthly_expense
+
+from django.db import models
+from django.utils import timezone
+
+class Discount(models.Model):
+    house = models.ForeignKey(House, on_delete=models.CASCADE, related_name="discounts")
+    discount_percentage = models.DecimalField(max_digits=5, decimal_places=2)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Discount for {self.house.name} from {self.start_date} to {self.end_date}"
+
+    # Check if the discount is active for a given date
+    def is_active(self, check_date=None):
+        if not check_date:
+            check_date = timezone.now().date()
+        return self.start_date <= check_date <= self.end_date

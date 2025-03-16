@@ -30,5 +30,9 @@ urlpatterns = [
     path('bookings/', views.booking_list, name='booking_list'),
     path('generate_invoice/<int:booking_id>/', views.generate_invoice, name='generate_invoice'),
 
+    #Discounts
+    path('houses/discounts/', views.discounts_page, name='discounts_page'),
+    path('houses/discounts/set/', views.set_discount, name='set_discount'),
+    path('houses/get_discounted_price/', views.get_discounted_price, name='get_discounted_price'),
 ]
 

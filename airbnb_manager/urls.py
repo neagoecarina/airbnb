@@ -56,6 +56,11 @@ urlpatterns = [
     #House Compare
     path('houses/house-compare/', views.house_compare, name='house_compare'),
 
+    #Discounts
+    path('houses/discounts/', views.discounts_page, name='discounts_page'),
+    path('houses/discounts/set/', views.set_discount, name='set_discount'),
+    path('houses/get_discounted_price/', views.get_discounted_price, name='get_discounted_price'),
+
     path('export/csv/', views.export_to_csv, name='export_to_csv'),
     path('export/excel/', views.export_to_excel, name='export_to_excel'),
     path('generate_pdf_report/', views.generate_pdf_report, name='generate_pdf_report'),

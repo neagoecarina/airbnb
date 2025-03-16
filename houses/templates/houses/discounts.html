@@ -1,0 +1,50 @@
+{% extends 'master.html' %}
+
+{% block content %}
+    <div class="container mt-4">
+        <h1 class="mb-4">Set Discounts for Houses</h1>
+
+        <!-- Display messages -->
+        {% if messages %}
+            <div class="alert alert-info">
+                {% for message in messages %}
+                    <p>{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- Form for setting discounts -->
+        <form method="POST" action="{% url 'set_discount' %}">
+            {% csrf_token %}
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label for="house">Select House</label>
+                    <select id="house" name="house" class="form-control">
+                        {% for house in houses %}
+                            <option value="{{ house.id }}">{{ house.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label for="discount_percentage">Discount Percentage (%)</label>
+                    <input type="number" id="discount_percentage" name="discount_percentage" class="form-control" required step="0.01">
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label for="start_date">Start Date</label>
+                    <input type="date" id="start_date" name="start_date" class="form-control" required>
+                </div>
+
+                <div class="col-md-4">
+                    <label for="end_date">End Date</label>
+                    <input type="date" id="end_date" name="end_date" class="form-control" required>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Set Discount</button>
+        </form>
+    </div>
+{% endblock %}

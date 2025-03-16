@@ -66,8 +66,20 @@ def delete_house(request, house_id):  # Use 'house_id' here as well
 
 
 # View for house details
-# View for house details
-@csrf_exempt  # Temporarily disable CSRF for debugging
+from django.http import JsonResponse
+from django.shortcuts import render, get_object_or_404
+from django.views.decorators.csrf import csrf_exempt
+from datetime import datetime, timedelta
+from .models import House, Booking, Discount
+from .utils import get_discounted_price  # Import the discount function
+
+from django.http import JsonResponse
+from django.shortcuts import render, get_object_or_404
+from datetime import datetime, timedelta
+from .models import House, Booking
+import json
+
+@csrf_exempt  # Temporarily disable CSRF for debugging, use only during development
 def house_detail(request, house_id):
     myhouse = get_object_or_404(House, id=house_id)
 
@@ -89,31 +101,34 @@ def house_detail(request, house_id):
         if Booking.objects.filter(house=myhouse, start_date__lt=end_date, end_date__gt=start_date).exists():
             return JsonResponse({"success": False, "message": "The selected dates are already booked."})
 
-        # Create booking
-        new_booking = Booking.objects.create(
-            house=myhouse,
-            customer_name=customer_name,
-            start_date=start_date,
-            end_date=end_date
-            
-        )
-        # ✅ Call update_monthly_expense() after booking is saved
-        #update_monthly_expense(house_id, new_booking.start_date.year, new_booking.start_date.month)
-        return JsonResponse({"success": True, "message": "Booking successful!", "customer_name": new_booking.customer_name})
+        # Create the booking (price will be calculated in the save method)
+        try:
+            new_booking = Booking.objects.create(
+                house=myhouse,
+                customer_name=customer_name,
+                start_date=start_date,
+                end_date=end_date,
+            )
 
-    # Get booked dates **(Move this inside the function)**
+            new_booking.save()  # Save the booking, triggering any calculations
+
+            return JsonResponse({"success": True, "message": "Booking successful!", "customer_name": new_booking.customer_name})
+        
+        except Exception as e:
+            return JsonResponse({"success": False, "message": f"Something went wrong: {str(e)}"})
+
+    # Get booked dates
     booked_ranges = Booking.objects.filter(house=myhouse)
     booked_dates = []
 
     for booking in booked_ranges:
         current_date = booking.start_date
-        while current_date <= booking.end_date:  # Include every date in the range
+        while current_date <= booking.end_date:
             booked_dates.append(current_date.strftime('%Y-%m-%d'))
-            current_date += timedelta(days=1)  # Move to the next day
+            current_date += timedelta(days=1)
 
-    # Pass booked_dates as a JSON-safe list to the template
+    # Return data to render the page
     return render(request, 'houses/details.html', {'myhouse': myhouse, 'booked_dates': json.dumps(booked_dates)})
-
 
 
 # Function to validate decimal input
@@ -1550,4 +1565,115 @@ def house_compare(request):
         "years": range(current_year, current_year + 5),
         "booking_trends": booking_trends,  # Accumulated trend for all houses
         "total_bookings_per_house": total_bookings_per_house,  # Pass total bookings to the template
+    })
+
+
+
+from django.shortcuts import render, redirect
+from .models import House, Discount
+from .forms import DiscountForm  # Assuming DiscountForm is correctly updated to use discount_percentage, start_date, and end_date
+
+def discounts_page(request):
+    # Get all houses to display in the dropdown
+    houses = House.objects.all()
+
+    return render(request, 'houses/discounts.html', {
+        'houses': houses,
+    })
+
+from django.contrib import messages
+
+def set_discount(request):
+    if request.method == 'POST':
+        form = DiscountForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Discount successfully set!")
+            return redirect('discounts_page')
+        else:
+            messages.error(request, "There was an error in the form.")
+    else:
+        form = DiscountForm()
+
+    return render(request, 'houses/discounts.html', {'form': form})
+
+from django.http import JsonResponse
+
+# views.py
+
+# views.py
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from datetime import datetime
+from django.utils import timezone
+from .models import House, Discount
+
+from datetime import datetime, timedelta
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from .models import House, Discount
+
+def get_discounted_price(request):
+    house_id = request.GET.get('house_id')
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
+
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return JsonResponse({'error': 'Invalid date format'}, status=400)
+
+    # Get the house object
+    house = get_object_or_404(House, id=house_id)
+
+    # Get applicable discounts for the house within the given date range
+    applicable_discounts = Discount.objects.filter(
+        house=house,
+        start_date__lte=end_date,
+        end_date__gte=start_date
+    )
+
+    total_discounted_price = 0
+    total_non_discounted_price = 0
+    current_date = start_date
+
+    while current_date <= end_date:
+        # Find if this day has a discount
+        daily_discount = False
+        for discount in applicable_discounts:
+            if discount.start_date <= current_date <= discount.end_date:
+                # Apply discount for this day
+                discount_amount = (discount.discount_percentage / 100) * house.price
+                daily_discount = True
+                total_discounted_price += (house.price - discount_amount)
+                break
+        
+        if not daily_discount:
+            # No discount for this day, apply normal price
+            total_non_discounted_price += house.price
+        
+        # Move to the next day
+        current_date += timedelta(days=1)
+
+    # Total price is the sum of discounted and non-discounted days
+    total_price = total_discounted_price + total_non_discounted_price
+
+    # Debug logs for better visibility
+    print(f"House ID: {house_id}")
+    print(f"Start Date: {start_date_str}")
+    print(f"End Date: {end_date_str}")
+    print(f"Total Discounted Price: {total_discounted_price}")
+    print(f"Total Non-Discounted Price: {total_non_discounted_price}")
+    print(f"Total Price: {total_price}")
+
+    # Format the price to 2 decimals
+    total_price = round(total_price, 2)
+    total_discounted_price = round(total_discounted_price, 2)
+    total_non_discounted_price = round(total_non_discounted_price, 2)
+
+    return JsonResponse({
+        'total_price': total_price,
+        'total_discounted_price': total_discounted_price,
+        'total_non_discounted_price': total_non_discounted_price
     })
