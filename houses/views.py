@@ -1362,14 +1362,14 @@ def calculate_adr(house_id, month, year):
         )
     ).aggregate(total_nights=Sum('nights'))['total_nights']
 
-    # Debugging: Check total nights before conversion
+    # Debugging: Check total nights before adjustment
     print(f"Total nights for house {house_id} in {month}/{year} (before adjustment): {total_nights}")
 
     # Adjust total_nights to include both check-in and check-out days
-    if total_nights:
-        total_nights = total_nights.days + 1  # Add 1 to include the check-out day
-    else:
-        total_nights = 0  # If no nights, set to zero
+    total_nights = 0
+    for booking in Booking.objects.filter(**filters):
+        booked_days = (booking.end_date - booking.start_date).days + 1  # Add 1 to include checkout day
+        total_nights += booked_days
 
     # Debugging: Check total nights after adjustment
     print(f"Total nights after adjustment (including checkout day): {total_nights}")
