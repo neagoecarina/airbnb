@@ -1263,9 +1263,9 @@ def expense_overview(request):
     return render(request, 'houses/expense_overview.html', context)
 
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.shortcuts import render
-from django.db.models import Sum
+from django.db.models import Sum, Count, F, ExpressionWrapper, FloatField, Q
 from decimal import Decimal
 import calendar
 from .models import House, Booking, MonthlyExpense
@@ -1277,22 +1277,21 @@ def calculate_profit(house_id=None, month=None, year=None):
         filters["house_id"] = house_id
     if year:
         filters["start_date__year"] = year
-    if month and month != 0:  # Skip filtering by month if "All Time" (0) is selected
+    if month and month != 0:
         filters["start_date__month"] = month
 
-    # Get total earnings by summing all bookings per house and month/year
     total_earnings = Booking.objects.filter(**filters).aggregate(total=Sum('booking_earnings'))['total'] or Decimal('0.00')
 
-    # Get total expenses for the same house and month/year
     expense_filters = {"house_id": house_id, "date__year": year}
     if month and month != 0:
         expense_filters["date__month"] = month
 
-    total_expenses = MonthlyExpense.objects.filter(**expense_filters) \
-        .aggregate(total=Sum('total_expense'))['total'] or Decimal('0.00')
+    total_expenses = MonthlyExpense.objects.filter(**expense_filters).aggregate(total=Sum('total_expense'))['total'] or Decimal('0.00')
 
-    # Calculate profit
     profit = total_earnings - total_expenses
+
+    print(f"DEBUG - Profit Calculation for house {house_id}, month {month}, year {year}:")
+    print(f"Total Earnings: {total_earnings}, Total Expenses: {total_expenses}, Profit: {profit}")
 
     return {
         "total_earnings": total_earnings,
@@ -1300,43 +1299,152 @@ def calculate_profit(house_id=None, month=None, year=None):
         "profit": profit
     }
 
+def calculate_occupancy_rate(house_id, month, year):
+    if not house_id:
+        return None
+
+    # Get the start and end dates of the selected month
+    first_day = datetime(year, month, 1).date()  # Convert to date
+    last_day = (first_day + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+
+    print(f"First Day: {first_day}, Last Day: {last_day}")  # Debugging: print the date range
+
+    # Get all bookings for the selected house within the date range
+    bookings = Booking.objects.filter(
+        house_id=house_id,
+        start_date__lte=last_day,
+        end_date__gte=first_day
+    )
+
+    booked_days = 0
+    for booking in bookings:
+        # Convert booking start and end dates to date if they are datetime
+        start_date = booking.start_date.date() if isinstance(booking.start_date, datetime) else booking.start_date
+        end_date = booking.end_date.date() if isinstance(booking.end_date, datetime) else booking.end_date
+
+        print(f"Booking: {start_date} to {end_date}")  # Debugging: print each booking's date range
+        
+        # Calculate the booked days for this booking
+        booked_days += (min(end_date, last_day) - max(start_date, first_day)).days + 1
+        print(f"Booked Days for this booking: {(min(end_date, last_day) - max(start_date, first_day)).days + 1}")  # Debugging
+
+    total_days = (last_day - first_day).days + 1
+
+    print(f"Total Days in Month: {total_days}, Booked Days: {booked_days}")  # Debugging: check total days and booked days
+
+    occupancy_rate = round((booked_days / total_days) * 100, 2) if total_days > 0 else 0
+    print(f"Occupancy Rate: {occupancy_rate}")  # Debugging: print final occupancy rate
+
+    return occupancy_rate
+
+
+
+from django.db.models import F, ExpressionWrapper, DurationField
+
+def calculate_adr(house_id, month, year):
+    if not house_id:
+        return None
+
+    filters = {"house_id": house_id, "start_date__year": year}
+    if month and month != 0:
+        filters["start_date__month"] = month
+
+    # Get the total earnings
+    total_earnings = Booking.objects.filter(**filters).aggregate(total=Sum('booking_earnings'))['total'] or Decimal('0.00')
+
+    # Debugging: Check total earnings
+    print(f"Total earnings for house {house_id} in {month}/{year}: {total_earnings}")
+
+    # Calculate the total nights using DateDifference
+    total_nights = Booking.objects.filter(**filters).annotate(
+        nights=ExpressionWrapper(
+            F('end_date') - F('start_date'), output_field=DurationField()
+        )
+    ).aggregate(total_nights=Sum('nights'))['total_nights']
+
+    # Debugging: Check total nights before conversion
+    print(f"Total nights for house {house_id} in {month}/{year} (before adjustment): {total_nights}")
+
+    # Adjust total_nights to include both check-in and check-out days
+    if total_nights:
+        total_nights = total_nights.days + 1  # Add 1 to include the check-out day
+    else:
+        total_nights = 0  # If no nights, set to zero
+
+    # Debugging: Check total nights after adjustment
+    print(f"Total nights after adjustment (including checkout day): {total_nights}")
+
+    # Calculate ADR
+    adr = round(total_earnings / total_nights, 2) if total_nights > 0 else 0
+
+    # Debugging: Final ADR calculation
+    print(f"ADR for house {house_id} in {month}/{year}: {adr}")
+
+    return adr
+
+
+
+
+def calculate_booking_trends(house_id, year):
+    if not house_id:
+        return []
+
+    monthly_bookings = Booking.objects.filter(house_id=house_id, start_date__year=year) \
+        .annotate(month=F('start_date__month')) \
+        .values('month') \
+        .annotate(total=Count('id')) \
+        .order_by('month')
+
+    trends = {i: 0 for i in range(1, 13)}
+    for entry in monthly_bookings:
+        trends[entry['month']] = entry['total']
+
+    return [trends[i] for i in range(1, 13)]
+
+
 def house_compare(request):
     current_date = datetime.now()
-    current_month = current_date.month
     current_year = current_date.year
 
     house_id = request.GET.get('house')
-    house_id = int(house_id) if house_id and house_id.isdigit() else None
-
-    selected_month = int(request.GET.get('month', current_month))
+    selected_month = int(request.GET.get('month', 0))  # 0 means "all months"
     selected_year = int(request.GET.get('year', current_year))
 
+    # If selected_month is 0 (meaning "all months"), set it to the current month
+    if selected_month == 0:
+        selected_month = current_date.month  # Set to the current month
+    
     houses = House.objects.all()
-
-    months = [{'value': i, 'name': calendar.month_name[i]} for i in range(1, 13)]
-    months.insert(0, {'value': 0, 'name': 'All Time'})  # Added "All Time" option
-
-    years = [current_year + i for i in range(6)]
-
-    # Calculate profit for each house
+    
     house_profit_data = []
+    booking_trends = [0] * 12  # Initialize an empty trend array
+
     for house in houses:
-        profit_data = calculate_profit(house_id=house.id, month=selected_month, year=selected_year)
+        profit_data = calculate_profit(house.id, selected_month, selected_year)
+        occupancy_rate = calculate_occupancy_rate(house.id, selected_month, selected_year)
+        adr = calculate_adr(house.id, selected_month, selected_year)
+        house_trends = calculate_booking_trends(house.id, selected_year)
+
+        # Accumulate bookings across houses
+        booking_trends = [booking_trends[i] + house_trends[i] for i in range(12)]
+
         house_profit_data.append({
             "house": house,
             "total_earnings": profit_data["total_earnings"],
             "total_expenses": profit_data["total_expenses"],
-            "profit": profit_data["profit"]
+            "profit": profit_data["profit"],
+            "occupancy_rate": occupancy_rate,
+            "adr": adr,
+            "booking_trends": house_trends,  # Store per-house trends
         })
 
-    context = {
-        'houses': houses,
-        'house_id': house_id,
-        'months': months,
-        'selected_month': selected_month,
-        'years': years,
-        'selected_year': selected_year,
-        'house_profit_data': house_profit_data,  # Now defined!
-    }
-
-    return render(request, 'houses/house_compare.html', context)
+    return render(request, "houses/house_compare.html", {
+        "houses": houses,
+        "house_profit_data": house_profit_data,
+        "house_id": int(house_id) if house_id else None,
+        "selected_month": selected_month,
+        "selected_year": selected_year,
+        "months": [{"value": i, "name": calendar.month_name[i]} for i in range(1, 13)],
+        "years": range(current_year, current_year + 5),
+        "booking_trends": booking_trends,  # Pass the accumulated trend
+    })

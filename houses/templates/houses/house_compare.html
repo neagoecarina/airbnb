@@ -21,9 +21,8 @@ function updateFilters() {
 <div class="container mt-4">
     <h1 class="mb-4">House Comparison</h1>
 
-    <!-- Filter Section -->
+    <!-- Filters -->
     <div class="row mb-3">
-        <!-- House Selector -->
         <div class="col-md-4">
             <label for="house">Select House</label>
             <select id="house" class="form-control" onchange="updateFilters()">
@@ -35,8 +34,6 @@ function updateFilters() {
                 {% endfor %}
             </select>
         </div>
-
-        <!-- Month Selector -->
         <div class="col-md-4">
             <label for="month">Select Month</label>
             <select id="month" class="form-control" onchange="updateFilters()">
@@ -47,8 +44,6 @@ function updateFilters() {
                 {% endfor %}
             </select>
         </div>
-
-        <!-- Year Selector -->
         <div class="col-md-4">
             <label for="year">Select Year</label>
             <select id="year" class="form-control" onchange="updateFilters()">
@@ -72,68 +67,129 @@ function updateFilters() {
             </tr>
         </thead>
         <tbody>
-          {% for house_data in house_profit_data %}
-          <tr>
-              <td>{{ house_data.house.name }}</td> <!-- Correct way to get the house name -->
-              <td>{{ house_data.total_earnings|default:"0.00"|floatformat:2 }}</td>
-              <td>{{ house_data.total_expenses|default:"0.00"|floatformat:2 }}</td>
-              <td>{{ house_data.profit|default:"0.00"|floatformat:2 }}</td>
-          </tr>
-          {% endfor %}
-      </tbody>
-      
+            {% for house_data in house_profit_data %}
+            <tr>
+                <td>{{ house_data.house.name }}</td>
+                <td>{{ house_data.total_earnings|default:"0.00"|floatformat:2 }}</td>
+                <td>{{ house_data.total_expenses|default:"0.00"|floatformat:2 }}</td>
+                <td>{{ house_data.profit|default:"0.00"|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
     </table>
-    <!-- Chart Section -->
-<div class="mt-5">
-  <h2>House Profits Overview</h2>
-  <canvas id="profitChart"></canvas>
+
+    <!-- Charts Section -->
+    <div class="row mt-5">
+        <div class="col-md-6">
+            <h2>House Profits</h2>
+            <canvas id="profitChart"></canvas>
+        </div>
+        <div class="col-md-6">
+            <h2>Occupancy Rate</h2>
+            <canvas id="occupancyChart"></canvas>
+        </div>
+    </div>
+    <div class="row mt-5">
+        <div class="col-md-6">
+            <h2>Average Daily Rate (ADR)</h2>
+            <canvas id="adrChart"></canvas>
+        </div>
+        <div class="col-md-6">
+            <h2>Booking Trends</h2>
+            <canvas id="bookingChart"></canvas>
+        </div>
+    </div>
 </div>
 
-
 <script>
-  // Get profit data from Django context
+  // Data preparation for charts
   let houseNames = [];
   let houseProfits = [];
   let profitColors = [];
-
+  let houseOccupancy = [];
+  let houseADR = [];
+  let bookingTrends = Array(12).fill(0);
+  
+  // Iterate over house_profit_data to populate chart data
   {% for house_data in house_profit_data %}
       houseNames.push("{{ house_data.house.name }}");
       houseProfits.push({{ house_data.profit }});
-
-      // Conditional color based on profit value
+      houseOccupancy.push({{ house_data.occupancy_rate }});
+      houseADR.push({{ house_data.adr }});
+  
+      // Adjust profit color based on profit value
       if ({{ house_data.profit }} < 0) {
-          profitColors.push('rgba(255, 99, 132, 0.6)');  // Light pink for negative profits
+          profitColors.push('rgba(255, 99, 132, 0.6)');
       } else {
-          profitColors.push('rgba(75, 192, 192, 0.6)');  // Light green for positive profits
+          profitColors.push('rgba(75, 192, 192, 0.6)');
       }
-  {% endfor %}
+  
+      // Log the booking trends for debugging
+      console.log("Booking Trends for House:", "{{ house_data.house.name }}", {{ house_data.booking_trends|safe }});
+  
+      // Add this house's booking trend data to the overall trend for each month
+      {% for month in months %}
+        monthIndex = {{ month.value }} - 1;
+        currentMonthTrend = {{ house_data.booking_trends|safe }}[monthIndex] || 0;
 
-  // Render chart using Chart.js
-  let ctx = document.getElementById('profitChart').getContext('2d');
-  new Chart(ctx, {
-      type: 'bar',  // Bar chart type
-      data: {
-          labels: houseNames,
-          datasets: [{
-              label: 'Monthly Profit (€)',
-              data: houseProfits,
-              backgroundColor: profitColors,  // Use the conditional colors
-              borderColor: 'rgba(54, 162, 235, 1)',  // Border color for bars
-              borderWidth: 1
-          }]
-      },
-      options: {
-          responsive: true,
-          scales: {
-              y: {
-                  beginAtZero: true
+        console.log("Month:", {{ month.value }}, "Booking Trend:", currentMonthTrend);
+
+        // Adăugăm corect la bookingTrends
+        bookingTrends[monthIndex] += currentMonthTrend;
+      {% endfor %}
+  
+  {% endfor %}
+  
+  // Debugging the bookingTrends data
+  console.log("Booking Trends Array After Accumulation:", bookingTrends);
+  
+  function createChart(chartId, chartType, labels, data, backgroundColors, labelText) {
+      let ctx = document.getElementById(chartId).getContext('2d');
+      new Chart(ctx, {
+          type: chartType,
+          data: {
+              labels: labels,
+              datasets: [{
+                  label: labelText,
+                  data: data,
+                  backgroundColor: backgroundColors,
+                  borderColor: 'rgba(54, 162, 235, 1)',
+                  borderWidth: 1
+              }]
+          },
+          options: {
+              responsive: true,
+              scales: {
+                  y: {
+                      beginAtZero: true
+                  }
               }
           }
-      }
-  });
-</script>
-
-
-</div>
+      });
+  }
+  
+  // Create all charts
+  createChart('profitChart', 'bar', houseNames, houseProfits, profitColors, 'Monthly Profit (€)');
+  createChart('occupancyChart', 'bar', houseNames, houseOccupancy, 'rgba(54, 162, 235, 0.6)', 'Occupancy Rate (%)');
+  createChart('adrChart', 'bar', houseNames, houseADR, 'rgba(255, 159, 64, 0.6)', 'Average Daily Rate (€)');
+  createChart('bookingChart', 'line',
+    ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    bookingTrends,
+    'rgba(153, 102, 255, 0.6)',
+    'Monthly Bookings'
+);
+  console.log(houseNames);
+  console.log(houseProfits);
+  console.log(houseOccupancy);
+  console.log(houseADR);
+  console.log(bookingTrends);
+  
+  </script>
+  
+  
+  
+  
+  
+  
 
 {% endblock %}
