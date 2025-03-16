@@ -1402,32 +1402,112 @@ def calculate_booking_trends(house_id, year):
     return [trends[i] for i in range(1, 13)]
 
 
+from datetime import datetime, timedelta
+from django.db.models import Count, F
+import calendar
+
+# Add the necessary calculations in the view
+def calculate_longest_booking(house_id, month, year):
+    bookings = Booking.objects.filter(house_id=house_id, start_date__year=year, start_date__month=month)
+    longest_booking = 0
+    for booking in bookings:
+        booking_length = (booking.end_date - booking.start_date).days
+        longest_booking = max(longest_booking, booking_length)
+    return longest_booking
+
+def calculate_average_booking_length(house_id, month, year):
+    bookings = Booking.objects.filter(house_id=house_id, start_date__year=year, start_date__month=month)
+    total_days = 0
+    total_bookings = bookings.count()
+    for booking in bookings:
+        total_days += (booking.end_date - booking.start_date).days
+    return round(total_days / total_bookings, 2) if total_bookings else 0
+
+def calculate_booking_length_distribution(house_id, month, year):
+    bookings = Booking.objects.filter(house_id=house_id, start_date__year=year, start_date__month=month)
+    distribution = {"1-3 days": 0, "4-7 days": 0, "8+ days": 0}
+    for booking in bookings:
+        booking_length = (booking.end_date - booking.start_date).days
+        if booking_length <= 3:
+            distribution["1-3 days"] += 1
+        elif 4 <= booking_length <= 7:
+            distribution["4-7 days"] += 1
+        else:
+            distribution["8+ days"] += 1
+    total_bookings = bookings.count()
+    distribution_percent = {k: (v / total_bookings) * 100 if total_bookings else 0 for k, v in distribution.items()}
+    return distribution_percent
+
+def calculate_bookings_this_week(house_id):
+    today = datetime.today()
+    start_of_week = today - timedelta(days=today.weekday())  # Monday of this week
+    end_of_week = start_of_week + timedelta(days=6)  # Sunday of this week
+    return Booking.objects.filter(house_id=house_id, start_date__gte=start_of_week, start_date__lte=end_of_week).count()
+
+def calculate_bookings_last_week(house_id):
+    today = datetime.today()
+    start_of_last_week = today - timedelta(days=today.weekday() + 7)  # Monday of last week
+    end_of_last_week = start_of_last_week + timedelta(days=6)  # Sunday of last week
+    return Booking.objects.filter(house_id=house_id, start_date__gte=start_of_last_week, start_date__lte=end_of_last_week).count()
+
+def calculate_most_common_booking_days(house_id, month, year):
+    bookings = Booking.objects.filter(house_id=house_id, start_date__year=year, start_date__month=month)
+    day_counts = {i: 0 for i in range(7)}  # For each day of the week, 0 - Monday, 6 - Sunday
+    for booking in bookings:
+        day_of_week = booking.start_date.weekday()  # 0 - Monday, 6 - Sunday
+        day_counts[day_of_week] += 1
+    # Find the day with the highest count
+    most_common_day = max(day_counts, key=day_counts.get)
+    return calendar.day_name[most_common_day]  # Convert to day name (e.g., "Monday")
+
+from datetime import datetime
+import calendar
+from .models import House  # Adjust the import as per your project structure
+from datetime import datetime
+from .models import Booking, House
+import calendar
+
 def house_compare(request):
     current_date = datetime.now()
     current_year = current_date.year
 
-    house_id = request.GET.get('house')
-    selected_month = int(request.GET.get('month', 0))  # 0 means "all months"
-    selected_year = int(request.GET.get('year', current_year))
+    selected_month = int(request.GET.get('month', current_date.month))  # Default to current month
+    selected_year = int(request.GET.get('year', current_year))  # Default to current year
+    house_id = request.GET.get('house', '')  # Get house_id from the URL query parameters
 
-    # If selected_month is 0 (meaning "all months"), set it to the current month
     if selected_month == 0:
-        selected_month = current_date.month  # Set to the current month
-    
-    houses = House.objects.all()
-    
+        selected_month = current_date.month  # Set to the current month if "all months" is selected
+
+    houses = House.objects.all()  # Get all houses for the table/graphs
+
     house_profit_data = []
     booking_trends = [0] * 12  # Initialize an empty trend array
 
+    selected_house_data = None  # For storing specific metrics if a house is selected
+
+    # Calculate total bookings for the selected month and year
+    total_bookings_per_house = {}  # Dictionary to store the total bookings per house
+
     for house in houses:
+        # Calculate profit data and other metrics for all houses
         profit_data = calculate_profit(house.id, selected_month, selected_year)
         occupancy_rate = calculate_occupancy_rate(house.id, selected_month, selected_year)
         adr = calculate_adr(house.id, selected_month, selected_year)
         house_trends = calculate_booking_trends(house.id, selected_year)
 
+        # Calculate total bookings for the selected month and year for the house
+        total_bookings = Booking.objects.filter(
+            house=house,
+            start_date__month=selected_month,
+            start_date__year=selected_year
+        ).count()
+
+        total_bookings_per_house[house.id] = total_bookings  # Store total bookings for this house
+
         # Accumulate bookings across houses
         booking_trends = [booking_trends[i] + house_trends[i] for i in range(12)]
 
+        # Store the data for all houses in the table/graphs
         house_profit_data.append({
             "house": house,
             "total_earnings": profit_data["total_earnings"],
@@ -1435,16 +1515,39 @@ def house_compare(request):
             "profit": profit_data["profit"],
             "occupancy_rate": occupancy_rate,
             "adr": adr,
+            "total_bookings": total_bookings,  # Add total bookings for the house
             "booking_trends": house_trends,  # Store per-house trends
         })
 
+        # If a specific house is selected, gather the detailed metrics
+        if house_id and house.id == int(house_id):
+            longest_booking = calculate_longest_booking(house.id, selected_month, selected_year)
+            average_booking_length = calculate_average_booking_length(house.id, selected_month, selected_year)
+            booking_length_distribution = calculate_booking_length_distribution(house.id, selected_month, selected_year)
+            most_common_booking_day = calculate_most_common_booking_days(house.id, selected_month, selected_year)
+
+            # Store the selected house data for metrics display
+            selected_house_data = {
+                "house": house,
+                "longest_booking": longest_booking,
+                "average_booking_length": average_booking_length,
+                "booking_length_distribution": booking_length_distribution,
+                "total_bookings": total_bookings,  # Display total bookings for the selected house
+                "most_common_booking_day": most_common_booking_day
+            }
+
+    # If no house is selected, show a message
+    if not house_id:
+        selected_house_data = {"message": "Select a house/month/year to display metrics"}
+
     return render(request, "houses/house_compare.html", {
         "houses": houses,
-        "house_profit_data": house_profit_data,
-        "house_id": int(house_id) if house_id else None,
+        "house_profit_data": house_profit_data,  # Table/graphs for all houses
+        "selected_house_data": selected_house_data,  # Metrics for the selected house or message
         "selected_month": selected_month,
         "selected_year": selected_year,
         "months": [{"value": i, "name": calendar.month_name[i]} for i in range(1, 13)],
         "years": range(current_year, current_year + 5),
-        "booking_trends": booking_trends,  # Pass the accumulated trend
+        "booking_trends": booking_trends,  # Accumulated trend for all houses
+        "total_bookings_per_house": total_bookings_per_house,  # Pass total bookings to the template
     })

@@ -1,60 +1,82 @@
 {% extends 'master.html' %}
+{% load custom_filters %}
 
 {% block content %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
 function updateFilters() {
-    let house = document.getElementById("house").value;
     let month = document.getElementById("month").value;
     let year = document.getElementById("year").value;
+    let house = document.getElementById("house").value;
 
     let urlParams = new URLSearchParams(window.location.search);
-    urlParams.set('house', house);
+    urlParams.set('house', house);  // Add the house parameter
     urlParams.set('month', month);
     urlParams.set('year', year);
 
-    window.location.search = urlParams.toString();
+    window.location.search = urlParams.toString();  // Update the URL
 }
 </script>
 
 <div class="container mt-4">
-    <h1 class="mb-4">House Comparison</h1>
+    <h1 class="mb-4">House Analytics</h1>
 
-    <!-- Filters -->
-    <div class="row mb-3">
-        <div class="col-md-4">
-            <label for="house">Select House</label>
-            <select id="house" class="form-control" onchange="updateFilters()">
-                <option value="" {% if house_id is None %}selected{% endif %}>All Houses</option>
-                {% for house in houses %}
-                    <option value="{{ house.id }}" {% if house.id == house_id %}selected{% endif %}>
-                        {{ house.name }}
-                    </option>
-                {% endfor %}
-            </select>
+    <!-- Filters Form -->
+    <form method="GET" action="{% url 'house_compare' %}">
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="house">Select House</label>
+                <select id="house" class="form-control" name="house" onchange="updateFilters()">
+                    <option value="">-- Select a House --</option>
+                    {% for house in houses %}
+                        <option value="{{ house.id }}" {% if house.id == house_id %}selected{% endif %}>
+                            {{ house.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="month">Select Month</label>
+                <select id="month" class="form-control" name="month" onchange="updateFilters()">
+                    {% for month in months %}
+                        <option value="{{ month.value }}" {% if month.value == selected_month %}selected{% endif %}>
+                            {{ month.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="year">Select Year</label>
+                <select id="year" class="form-control" name="year" onchange="updateFilters()">
+                    {% for year in years %}
+                        <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>
+                            {{ year }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
-        <div class="col-md-4">
-            <label for="month">Select Month</label>
-            <select id="month" class="form-control" onchange="updateFilters()">
-                {% for month in months %}
-                    <option value="{{ month.value }}" {% if month.value == selected_month %}selected{% endif %}>
-                        {{ month.name }}
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-4">
-            <label for="year">Select Year</label>
-            <select id="year" class="form-control" onchange="updateFilters()">
-                {% for year in years %}
-                    <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>
-                        {{ year }}
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-    </div>
+    </form>
+
+<!-- House-Specific Metrics -->
+{% if selected_house_data %}
+<h2>House: {{ selected_house_data.house.name }}</h2>
+<div><strong>Total Bookings for Selected Month:</strong> {{ selected_house_data.total_bookings }}</div>
+<div><strong>Longest Booking:</strong> {{ selected_house_data.longest_booking }} days</div>
+<div><strong>Average Booking Length:</strong> {{ selected_house_data.average_booking_length }} days</div>
+<div><strong>Most Common Booking Day:</strong> {{ selected_house_data.most_common_booking_day }}</div>
+
+<!-- Booking Length Distribution -->
+<h3>Booking Length Distribution</h3>
+<ul>
+    {% for length, count in selected_house_data.booking_length_distribution.items %}
+        <li><strong>{{ length }} days:</strong> {{ count|floatformat:2 }}% bookings</li>
+    {% endfor %}
+</ul>
+{% else %}
+<p>No house selected yet. Please select a house to see detailed metrics.</p>
+{% endif %}
 
     <!-- Comparison Table -->
     <table class="table table-bordered">
@@ -134,7 +156,7 @@ function updateFilters() {
 
         console.log("Month:", {{ month.value }}, "Booking Trend:", currentMonthTrend);
 
-        // Adăugăm corect la bookingTrends
+        // Add correctly to bookingTrends
         bookingTrends[monthIndex] += currentMonthTrend;
       {% endfor %}
   
@@ -183,13 +205,6 @@ function updateFilters() {
   console.log(houseOccupancy);
   console.log(houseADR);
   console.log(bookingTrends);
-  
-  </script>
-  
-  
-  
-  
-  
-  
+</script>
 
 {% endblock %}
