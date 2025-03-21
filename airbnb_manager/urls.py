@@ -72,6 +72,8 @@ urlpatterns = [
     # Delete discount (handled via AJAX)
     path('houses/discounts/delete/<int:discount_id>/', views.delete_discount, name='delete_discount'),
 
+    path('houses/get_discounted_price_for_day/', views.get_discounted_price_for_day, name='get_discounted_price_for_day'),
+
     path('export/csv/', views.export_to_csv, name='export_to_csv'),
     path('export/excel/', views.export_to_excel, name='export_to_excel'),
     path('generate_pdf_report/', views.generate_pdf_report, name='generate_pdf_report'),

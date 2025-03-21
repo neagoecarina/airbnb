@@ -1,7 +1,4 @@
 {% extends 'master.html' %}
-
-{% block title %}{{ myhouse.name }} Details{% endblock %}
-
 {% block content %}
   <h2>{{ myhouse.name }} - {{ myhouse.address }}</h2>
   <p><strong>Price per night:</strong> ${{ myhouse.price }}</p>
@@ -46,176 +43,202 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/fullcalendar.min.js"></script>
 
   <script>
-$(document).ready(function() {
-  let pricePerNight = {{ myhouse.price }};  // Regular price per night
-  let selectedDate = null;
-  let endDate = null;
-
-  let bookedDates = {{ booked_dates|safe }};  // Booked dates passed from server
-
-  console.log("Price per night:", pricePerNight);
-  console.log("Booked dates:", bookedDates);
-
-  $('#calendar').fullCalendar({
-    selectable: true,
-    selectHelper: true,
-    unselectAuto: false,
-    dayRender: function(date, cell) {
-      let formattedDate = date.format('YYYY-MM-DD');
-      if (bookedDates.includes(formattedDate)) {
-        cell.css('background-color', '#FFC0CB'); // Baby pink for booked dates
-        cell.css('cursor', 'not-allowed'); // Disable booking on these dates
-      }
-    },
-    select: function(start, end) {
-      console.log("Selected start date:", start.format('YYYY-MM-DD'));
-      console.log("Selected end date:", end ? end.format('YYYY-MM-DD') : 'None');
-
-      // Reset previous selection if needed
-      if (selectedDate && endDate) {
-        selectedDate = null;
-        endDate = null;
-        $('#calendar').fullCalendar('removeEvents');
-        $('#start-date').text('-');
-        $('#end-date').text('-');
-        $('#total-price').text('0.00');
-        $('#total-price-vat').text('0.00');
-      }
-
-      // Assign start date
-      if (!selectedDate) {
-        selectedDate = start;
-        $('#start-date').text(selectedDate.format('YYYY-MM-DD'));
-        $('#start_date_input').val(selectedDate.format('YYYY-MM-DD'));
-      } else {
-        if (start.isBefore(selectedDate)) {
-          selectedDate = start;
-          $('#start-date').text(selectedDate.format('YYYY-MM-DD'));
-          $('#start_date_input').val(selectedDate.format('YYYY-MM-DD'));
-          $('#end-date').text('-');
-          $('#end_date_input').val('');
-          endDate = null;
-        } else {
-          endDate = start;
-          $('#end-date').text(endDate.format('YYYY-MM-DD'));
-          $('#end_date_input').val(endDate.format('YYYY-MM-DD'));
+    $(document).ready(function() {
+      // Regular price per night
+      let pricePerNight = {{ myhouse.price }};  
+      let selectedDate = null;
+      let endDate = null;
+    
+      // Booked dates passed from server
+      let bookedDates = {{ booked_dates|safe }};  
+    
+      console.log("Price per night:", pricePerNight);
+      console.log("Booked dates:", bookedDates);
+    
+      // Initialize the calendar
+      $('#calendar').fullCalendar({
+        selectable: true,
+        selectHelper: true,
+        unselectAuto: false,
+    
+        dayRender: function(date, cell) {
+          let formattedDate = date.format('YYYY-MM-DD');
+          
+          // Fetch the discounted price for the specific day
+          $.ajax({
+            url: '/houses/get_discounted_price_for_day/',  
+            data: {
+              'house_id': {{ myhouse.id }},
+              'date': formattedDate
+            },
+            success: function(response) {
+              let priceDisplay = '$' + (response.discounted_price || pricePerNight).toFixed(2); 
+    
+              // Append the price to the calendar cell
+              cell.append('<div class="price-overlay">' + priceDisplay + '</div>');
+    
+              // Check if the date is booked
+              if (bookedDates.includes(formattedDate)) {
+                cell.css('background-color', '#FFC0CB'); // Baby pink for booked dates
+                cell.css('cursor', 'not-allowed'); // Disable booking on these dates
+              }
+            },
+            error: function(xhr, status, error) {
+              console.error('AJAX Error:', status, error);
+              alert('Error fetching discounted price for day. Please try again.');
+            }
+          });
+        },
+    
+        select: function(start, end) {
+          console.log("Selected start date:", start.format('YYYY-MM-DD'));
+          console.log("Selected end date:", end ? end.format('YYYY-MM-DD') : 'None');
+    
+          // Reset previous selection if needed
+          if (selectedDate && endDate) {
+            selectedDate = null;
+            endDate = null;
+            $('#calendar').fullCalendar('removeEvents');
+            $('#start-date').text('-');
+            $('#end-date').text('-');
+            $('#total-price').text('0.00');
+            $('#total-price-vat').text('0.00');
+          }
+    
+          // Assign start date
+          if (!selectedDate) {
+            selectedDate = start;
+            $('#start-date').text(selectedDate.format('YYYY-MM-DD'));
+            $('#start_date_input').val(selectedDate.format('YYYY-MM-DD'));
+          } else {
+            if (start.isBefore(selectedDate)) {
+              selectedDate = start;
+              $('#start-date').text(selectedDate.format('YYYY-MM-DD'));
+              $('#start_date_input').val(selectedDate.format('YYYY-MM-DD'));
+              $('#end-date').text('-');
+              $('#end_date_input').val('');
+              endDate = null;
+            } else {
+              endDate = start;
+              $('#end-date').text(endDate.format('YYYY-MM-DD'));
+              $('#end_date_input').val(endDate.format('YYYY-MM-DD'));
+            }
+          }
+    
+          // Highlight selected date range
+          let events = [];
+          let highlightDate = selectedDate.clone();
+          while (highlightDate.isBefore(endDate) || highlightDate.isSame(endDate)) {
+            events.push({
+              id: 'selection',
+              start: highlightDate.format('YYYY-MM-DD'),
+              end: highlightDate.format('YYYY-MM-DD'),
+              rendering: 'background',
+              backgroundColor: '#ADD8E6'  // Light blue for the selected range
+            });
+            highlightDate.add(1, 'days');
+          }
+          $('#calendar').fullCalendar('removeEvents', 'selection');
+          $('#calendar').fullCalendar('addEventSource', events);
+    
+          // Only fetch price if endDate exists
+          if (endDate) {
+            let numberOfDays = endDate.diff(selectedDate, 'days') + 1;
+            console.log("Number of days selected:", numberOfDays);
+    
+            // Make an AJAX request to fetch the discounted price if any
+            $.ajax({
+              url: '/houses/get_discounted_price/',  
+              data: {
+                'house_id': {{ myhouse.id }},
+                'start_date': selectedDate.format('YYYY-MM-DD'),
+                'end_date': endDate.format('YYYY-MM-DD')
+              },
+              success: function(response) {
+                console.log("Discounted price response:", response);
+    
+                // Default to regular price if no discount
+                let discountedPrice = response.discounted_price || pricePerNight;
+                console.log("Using discounted price:", discountedPrice);
+    
+                // Calculate the total price and VAT
+                let totalPrice = response.total_price || numberOfDays * pricePerNight;
+                console.log("Total price (no VAT):", totalPrice);
+    
+                let vatPrice = totalPrice * 0.19;  // Calculate VAT (19%)
+                let totalPriceWithVAT = Number(totalPrice) + vatPrice;
+                console.log("VAT price:", vatPrice);
+                console.log("Total price with VAT:", totalPriceWithVAT);
+    
+                // Round the total price and VAT to 2 decimal places before displaying
+                totalPrice = Number(totalPrice).toFixed(2);
+                totalPriceWithVAT = Number(totalPriceWithVAT).toFixed(2);
+    
+                // Update the total price and price with VAT in the HTML
+                $('#total-price').text(totalPrice);  // Display total price
+                $('#total-price-vat').text(totalPriceWithVAT);  // Display price with VAT
+              },
+              error: function(xhr, status, error) {
+                console.error('AJAX Error:', status, error);
+                alert('Error fetching discounted price. Please try again.');
+              }
+            });
+          }
         }
-      }
-
-      // Highlight selected date range
-      let events = [];
-      let highlightDate = selectedDate.clone();
-      while (highlightDate.isBefore(endDate) || highlightDate.isSame(endDate)) {
-        events.push({
-          id: 'selection',
-          start: highlightDate.format('YYYY-MM-DD'),
-          end: highlightDate.format('YYYY-MM-DD'),
-          rendering: 'background',
-          backgroundColor: '#ADD8E6'  // Light blue for the selected range
-        });
-        highlightDate.add(1, 'days');
-      }
-      $('#calendar').fullCalendar('removeEvents', 'selection');
-      $('#calendar').fullCalendar('addEventSource', events);
-
-      // Only fetch price if endDate exists
-      if (endDate) {
-        let numberOfDays = endDate.diff(selectedDate, 'days') + 1;
-        console.log("Number of days selected:", numberOfDays);
-
-        // Make an AJAX request to fetch the discounted price if any
+      });
+    
+      // Handle form submission
+      $('#booking-form').on('submit', function(event) {
+        event.preventDefault();  // Prevent default form submission
+    
+        let customerName = $('#customer_name_input').val();
+        let startDate = $('#start_date_input').val();
+        let endDate = $('#end_date_input').val();
+    
+        console.log("Form submission - Customer Name:", customerName);
+        console.log("Form submission - Start Date:", startDate);
+        console.log("Form submission - End Date:", endDate);
+    
+        if (!customerName || !startDate || !endDate) {
+          alert('Please enter all required details.');
+          return;
+        }
+    
         $.ajax({
-    url: '/houses/get_discounted_price/',  // Correct URL for discounted price
-    data: {
-        'house_id': {{ myhouse.id }},
-        'start_date': selectedDate.format('YYYY-MM-DD'),
-        'end_date': endDate.format('YYYY-MM-DD')
-    },
-    success: function(response) {
-        console.log("Discounted price response:", response);
-
-        // Default to regular price if no discount
-        let discountedPrice = response.discounted_price || pricePerNight;
-        console.log("Using discounted price:", discountedPrice);
-
-        // Calculate the total price and VAT
-        let numberOfDays = endDate.diff(selectedDate, 'days') + 1;
-        let totalPrice = response.total_price || numberOfDays * pricePerNight;
-        console.log("Total price (no VAT):", totalPrice);
-
-        let vatPrice = totalPrice * 0.19;  // Calculate VAT (19%)
-        let totalPriceWithVAT = Number(totalPrice) + vatPrice;
-        console.log("VAT price:", vatPrice);
-        console.log("Total price with VAT:", totalPriceWithVAT);
-
-        // Round the total price and VAT to 2 decimal places before displaying
-        totalPrice =Number(totalPrice).toFixed(2);
-        totalPriceWithVAT = Number(totalPriceWithVAT).toFixed(2);
-
-        // Update the total price and price with VAT in the HTML
-        $('#total-price').text(totalPrice);  // Display total price
-        $('#total-price-vat').text(totalPriceWithVAT);  // Display price with VAT
-    },
-    error: function(xhr, status, error) {
-        console.error('AJAX Error:', status, error);
-        alert('Error fetching discounted price. Please try again.');
-    }
-});
-
-      }
-    }
-  });
-
-  // Handle form submission
-  $('#booking-form').on('submit', function(event) {
-    event.preventDefault();  // Prevent default form submission
-
-    let customerName = $('#customer_name_input').val();
-    let startDate = $('#start_date_input').val();
-    let endDate = $('#end_date_input').val();
-
-    console.log("Form submission - Customer Name:", customerName);
-    console.log("Form submission - Start Date:", startDate);
-    console.log("Form submission - End Date:", endDate);
-
-    if (!customerName || !startDate || !endDate) {
-      alert('Please enter all required details.');
-      return;
-    }
-
-    $.ajax({
-      type: 'POST',
-      url: window.location.href,
-      data: {
-        start_date: startDate,
-        end_date: endDate,
-        customer_name: customerName,
-        csrfmiddlewaretoken: '{{ csrf_token }}'
-      },
-      success: function(response) {
-        console.log('AJAX Response:', response);  // Log response in console
-
-        if (response.success) {
-          alert(response.message);  // Show success message
-          $('#customer_name_input').val('');  // Clear the customer name field
-
-          // Show success modal
-          $('#bookingSuccessModal').fadeIn();
-
-          setTimeout(function() {
-            location.reload();  // Refresh page after a slight delay
-          }, 500);
-        } else {
-          alert(response.message);
-        }
-      },
-      error: function(xhr, status, error) {
-        console.error('AJAX Error:', status, error);
-        alert('Something went wrong. Please try again.');
-      }
+          type: 'POST',
+          url: window.location.href,
+          data: {
+            start_date: startDate,
+            end_date: endDate,
+            customer_name: customerName,
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+          },
+          success: function(response) {
+            console.log('AJAX Response:', response);  // Log response in console
+    
+            if (response.success) {
+              alert(response.message);  // Show success message
+              $('#customer_name_input').val('');  // Clear the customer name field
+    
+              // Show success modal
+              $('#bookingSuccessModal').fadeIn();
+    
+              setTimeout(function() {
+                location.reload();  // Refresh page after a slight delay
+              }, 500);
+            } else {
+              alert(response.message);
+            }
+          },
+          error: function(xhr, status, error) {
+            console.error('AJAX Error:', status, error);
+            alert('Something went wrong. Please try again.');
+          }
+        });
+      });
     });
-  });
-});
+    </script>
+    
 
-  </script>
+    
 {% endblock %}

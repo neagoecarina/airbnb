@@ -1722,3 +1722,48 @@ def get_discounted_price(request):
         'total_discounted_price': total_discounted_price,
         'total_non_discounted_price': total_non_discounted_price
     })
+
+
+
+from django.http import JsonResponse
+from .models import House, Discount
+from django.http import JsonResponse
+from .models import House, Discount
+from datetime import datetime
+
+def get_discounted_price_for_day(request):
+    house_id = request.GET.get('house_id')
+    date_str = request.GET.get('date')  # Expecting date in 'YYYY-MM-DD' format
+
+    # Validate inputs
+    if not house_id or not date_str:
+        return JsonResponse({'error': 'Missing house_id or date parameters'}, status=400)
+
+    try:
+        house = House.objects.get(id=house_id)
+    except House.DoesNotExist:
+        return JsonResponse({'error': 'House not found'}, status=404)
+
+    try:
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()  # Convert string to date object
+    except ValueError:
+        return JsonResponse({'error': 'Invalid date format'}, status=400)
+
+    # Default price is the house's regular price
+    discounted_price = house.price
+
+    # Check for a discount that applies to the selected date
+    discount = Discount.objects.filter(house=house, start_date__lte=date, end_date__gte=date).first()
+    if discount:
+        # Calculate the discounted price
+        discount_amount = (discount.discount_percentage / 100) * house.price
+        discounted_price = house.price - discount_amount  # Apply the discount
+
+    # Make sure discounted_price is a valid number before returning it
+    try:
+        discounted_price = float(discounted_price)  # Ensure it's a float
+    except ValueError:
+        return JsonResponse({'error': 'Invalid price value'}, status=500)
+
+    # Return the discounted price as JSON
+    return JsonResponse({'discounted_price': round(discounted_price, 2)})  # Return rounded to 2 decimal places
