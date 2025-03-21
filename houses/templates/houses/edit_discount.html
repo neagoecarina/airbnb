@@ -1,0 +1,30 @@
+<!-- houses/templates/houses/edit_discount.html -->
+{% extends 'master.html' %}
+
+
+
+
+{% block content %}
+  <div class="container mt-4">
+    <h2 class="text-center mb-4" style="font-family: 'Arial', sans-serif; color: #333;">Edit Discount</h2>
+
+    <form method="post" class="p-4 border rounded shadow-sm" style="background-color: #f9f9f9;">
+      {% csrf_token %}
+      
+      <div class="form-group mb-3">
+        {{ form.as_p }}
+      </div>
+
+      <div class="text-center">
+        <button type="submit" class="btn btn-primary" style="padding: 10px 30px; border-radius: 5px; font-size: 16px;">Save changes</button>
+      </div>
+    </form>
+
+    <div class="text-center mt-3">
+      <a href="{% url 'discounts_page' %}" class="btn btn-secondary" style="padding: 8px 25px; border-radius: 5px; font-size: 14px; text-decoration: none;">Back to Discounts</a>
+    </div>
+  </div>
+
+{% endblock %}
+
+

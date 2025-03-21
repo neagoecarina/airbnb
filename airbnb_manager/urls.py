@@ -57,9 +57,20 @@ urlpatterns = [
     path('houses/house-compare/', views.house_compare, name='house_compare'),
 
     #Discounts
+    # Discounts Page (Main View)
     path('houses/discounts/', views.discounts_page, name='discounts_page'),
+
+    # Set a new discount
     path('houses/discounts/set/', views.set_discount, name='set_discount'),
+
+    # Get discounted price (if needed elsewhere)
     path('houses/get_discounted_price/', views.get_discounted_price, name='get_discounted_price'),
+
+    # Edit discount (opens a new form to update)
+    path('houses/discounts/edit/<int:discount_id>/', views.edit_discount, name='edit_discount'),
+
+    # Delete discount (handled via AJAX)
+    path('houses/discounts/delete/<int:discount_id>/', views.delete_discount, name='delete_discount'),
 
     path('export/csv/', views.export_to_csv, name='export_to_csv'),
     path('export/excel/', views.export_to_excel, name='export_to_excel'),

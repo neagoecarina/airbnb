@@ -1569,17 +1569,14 @@ def house_compare(request):
 
 
 
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from django.http import JsonResponse
+from .models import House, Discount
+from .forms import DiscountForm  
 from django.shortcuts import render, redirect
 from .models import House, Discount
-from .forms import DiscountForm  # Assuming DiscountForm is correctly updated to use discount_percentage, start_date, and end_date
-
-def discounts_page(request):
-    # Get all houses to display in the dropdown
-    houses = House.objects.all()
-
-    return render(request, 'houses/discounts.html', {
-        'houses': houses,
-    })
+from .forms import DiscountForm  # Ensure this form is correctly defined
 
 from django.contrib import messages
 
@@ -1597,9 +1594,57 @@ def set_discount(request):
 
     return render(request, 'houses/discounts.html', {'form': form})
 
-from django.http import JsonResponse
+def discounts_page(request):
+    """Display discounts and allow setting new ones."""
+    houses = House.objects.all()
+    discounts = Discount.objects.all()  # Fetch existing discounts
 
-# views.py
+    if request.method == 'POST':
+        form = DiscountForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Discount successfully set!")
+            return redirect('discounts_page')
+        else:
+            messages.error(request, "There was an error in the form.")
+    else:
+        form = DiscountForm()
+
+    return render(request, 'houses/discounts.html', {
+        'houses': houses,
+        'discounts': discounts,  # Pass discounts to template
+        'form': form,
+    })
+
+def edit_discount(request, discount_id):
+    """Edit an existing discount."""
+    discount = get_object_or_404(Discount, id=discount_id)
+    
+    if request.method == 'POST':
+        form = DiscountForm(request.POST, instance=discount)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Discount successfully updated!")
+            return redirect('discounts_page')
+        else:
+            messages.error(request, "There was an error updating the discount.")
+    else:
+        form = DiscountForm(instance=discount)
+
+    return render(request, 'houses/edit_discount.html', {'form': form, 'discount': discount})
+
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from .models import Discount
+
+def delete_discount(request, discount_id):
+    """Delete a discount using AJAX."""
+    if request.method == 'DELETE':
+        discount = get_object_or_404(Discount, id=discount_id)
+        discount.delete()
+        return JsonResponse({'message': 'Discount deleted successfully!'})
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+
 
 # views.py
 from django.http import JsonResponse

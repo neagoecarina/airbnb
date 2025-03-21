@@ -1,50 +1,120 @@
 {% extends 'master.html' %}
 
 {% block content %}
-    <div class="container mt-4">
-        <h1 class="mb-4">Set Discounts for Houses</h1>
+<div class="container mt-4">
+    <h1 class="mb-4">Manage Discounts</h1>
 
-        <!-- Display messages -->
-        {% if messages %}
-            <div class="alert alert-info">
-                {% for message in messages %}
-                    <p>{{ message }}</p>
-                {% endfor %}
-            </div>
-        {% endif %}
+    <!-- Display messages -->
+    {% if messages %}
+        <div class="alert alert-info">
+            {% for message in messages %}
+                <p>{{ message }}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
 
-        <!-- Form for setting discounts -->
-        <form method="POST" action="{% url 'set_discount' %}">
-            {% csrf_token %}
-            <div class="row mb-3">
-                <div class="col-md-4">
-                    <label for="house">Select House</label>
-                    <select id="house" name="house" class="form-control">
-                        {% for house in houses %}
-                            <option value="{{ house.id }}">{{ house.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="col-md-4">
-                    <label for="discount_percentage">Discount Percentage (%)</label>
-                    <input type="number" id="discount_percentage" name="discount_percentage" class="form-control" required step="0.01">
-                </div>
+    <!-- Form for setting discounts -->
+    <form method="POST" action="{% url 'discounts_page' %}">
+        {% csrf_token %}
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="house">Select House</label>
+                <select id="house" name="house" class="form-control">
+                    {% for house in houses %}
+                        <option value="{{ house.id }}">{{ house.name }}</option>
+                    {% endfor %}
+                </select>
             </div>
 
-            <div class="row mb-3">
-                <div class="col-md-4">
-                    <label for="start_date">Start Date</label>
-                    <input type="date" id="start_date" name="start_date" class="form-control" required>
-                </div>
+            <div class="col-md-4">
+                <label for="discount_percentage">Discount Percentage (%)</label>
+                <input type="number" id="discount_percentage" name="discount_percentage" class="form-control" required step="0.01">
+            </div>
+        </div>
 
-                <div class="col-md-4">
-                    <label for="end_date">End Date</label>
-                    <input type="date" id="end_date" name="end_date" class="form-control" required>
-                </div>
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="start_date">Start Date</label>
+                <input type="date" id="start_date" name="start_date" class="form-control" required>
             </div>
 
-            <button type="submit" class="btn btn-primary">Set Discount</button>
-        </form>
-    </div>
+            <div class="col-md-4">
+                <label for="end_date">End Date</label>
+                <input type="date" id="end_date" name="end_date" class="form-control" required>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Set Discount</button>
+    </form>
+
+    <!-- Table for Managing Discounts -->
+    <h2 class="mt-5">Existing Discounts</h2>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>House</th>
+                <th>Discount (%)</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for discount in discounts %}
+            <tr id="discount-{{ discount.id }}">
+                <td>{{ discount.house.name }}</td>
+                <td>{{ discount.discount_percentage }}</td>
+                <td>{{ discount.start_date }}</td>
+                <td>{{ discount.end_date }}</td>
+                <td>
+                    <a href="{% url 'edit_discount' discount.id %}" class="btn btn-warning btn-sm">Edit</a>
+                    <button class="btn btn-danger btn-sm delete-discount" data-id="{{ discount.id }}">Delete</button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="text-center">No discounts set yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- AJAX for Deleting Discounts -->
+<script>
+   
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll(".delete-discount").forEach(button => {
+            button.addEventListener("click", function() {
+                let discountId = this.getAttribute("data-id");
+                let row = document.getElementById("discount-" + discountId);
+
+                fetch(`/houses/discounts/delete/${discountId}/`, {
+                    method: "DELETE",
+                    headers: {
+                        "X-CSRFToken": "{{ csrf_token }}",
+                        "Content-Type": "application/json",  // Ensure content type is JSON
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json(); // Parse the response as JSON
+                })
+                .then(data => {
+                    alert(data.message); // Display the success message
+                    row.remove(); // Remove the row from the table
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    alert("There was an error deleting the discount.");
+                });
+            });
+        });
+    });
+</script>
+
+
+
 {% endblock %}
