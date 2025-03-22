@@ -1047,6 +1047,9 @@ def landing_page(request):
     current_month = datetime.now().month
     current_year = datetime.now().year
 
+ # Get the full month name using strftime
+    current_month_name = datetime(current_year, current_month, 1).strftime('%B')
+
     start_date = datetime(current_year, current_month, 1)
     next_month = current_month + 1 if current_month < 12 else 1
     next_month_year = current_year if current_month < 12 else current_year + 1
@@ -1128,6 +1131,7 @@ def landing_page(request):
         'most_booked_property': most_booked_property_name,
         'avg_booking_duration': avg_booking_duration,
         'recent_expenses': recent_expenses,
+        'current_month_name': current_month_name,
     }
 
     return render(request, 'landing.html', context)

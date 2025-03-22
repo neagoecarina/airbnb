@@ -64,7 +64,7 @@
         <div class="card">
             <h2 class="section-title">Revenue Overview for This Month</h2>
             <!-- Display Profit (Net Earnings) for the current month -->
-            <p>Net Profit for {{ current_month }}: ${{ total_net_earnings }}</p>
+            <p>Net Profit for {{ current_month_name }}: ${{ total_net_earnings }}</p>
 
             <h3>House Earnings for This Month</h3>
             {% if house_earnings %}
@@ -80,7 +80,7 @@
 
         <div class="card">
             <h2 class="section-title">Occupancy & Stats for This Month</h2>
-            <p>Occupancy Rate for {{ current_month }}: {{ occupancy_rate }}%</p>
+            <p>Occupancy Rate for {{ current_month_name }}: {{ occupancy_rate }}%</p>
             <p>Most Booked Property for This Month: {{ most_booked_property }}</p>
             <p>Avg. Booking Duration for This Month: {{ avg_booking_duration }} nights</p>
         </div>
