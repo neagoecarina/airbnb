@@ -110,7 +110,7 @@ def house_detail(request, house_id):
                 end_date=end_date,
             )
 
-            new_booking.save()  # Save the booking, triggering any calculations
+            #new_booking.save()  # Save the booking, triggering any calculations
 
             return JsonResponse({"success": True, "message": "Booking successful!", "customer_name": new_booking.customer_name})
         

@@ -45,6 +45,22 @@ from django.utils import timezone
 
 from datetime import timedelta
 
+
+from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
+
+from decimal import Decimal
+from datetime import timedelta, date
+from django.db import transaction
+
+from decimal import Decimal
+from datetime import timedelta, date
+from django.db import transaction
+
+from django.db import transaction
+from datetime import timedelta, date
+from decimal import Decimal
+from django.db.models import Sum
+
 class Booking(models.Model):
     house = models.ForeignKey(House, on_delete=models.CASCADE, related_name='bookings')
     customer_name = models.CharField(max_length=255, default="Unknown")
@@ -53,9 +69,11 @@ class Booking(models.Model):
     booking_earnings = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))  # New field for earnings
     cleaning_fee = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('50.00'))  # Default cleaning fee
 
-
     def __str__(self):
         return f"Booking for {self.house.name} by {self.customer_name}"
+
+
+
 
 
     def save(self, *args, **kwargs):
@@ -161,32 +179,34 @@ class Booking(models.Model):
                 if not created:
                     monthly_expense.total_expense = total_expenses
                     monthly_expense.save()
-                    print("✅ Monthly expenses updated.")
+                    print(f"✅ Monthly expenses updated to {total_expenses}")
 
 
                 # --- Update Earnings ---
                 monthly_earnings = MonthlyEarning.get_or_create_earnings_for_month(first_day_of_month.strftime("%Y-%m"))
                 monthly_earnings.total_earnings += self.booking_earnings
                 monthly_earnings.save()
-                print("✅ Monthly earnings updated.")
+                print(f"✅ Monthly earnings updated {monthly_earnings.total_earnings}")
 
 
                 yearly_earnings = YearlyEarning.get_or_create_yearly_earnings(str(self.start_date.year))
                 yearly_earnings.total_earnings = Decimal(yearly_earnings.total_earnings)  # Convert to Decimal if needed
                 yearly_earnings.total_earnings += self.booking_earnings
                 yearly_earnings.save()
-                print("✅ Yearly earnings updated.")
+                print(f"✅ Yearly earnings updated {yearly_earnings.total_earnings}")
 
 
-                house_earnings = HouseEarning.get_or_create_house_earnings(self.house, first_day_of_month)
+                house_earnings, created = HouseEarning.get_or_create_house_earnings(self.house, first_day_of_month)
                 house_earnings.total_price += self.booking_earnings
                 house_earnings.save()
-                print("✅ House earnings updated.")
+                print(f"✅ House earnings updated to {house_earnings.total_price}, booking_earnings = {self.booking_earnings} ")
 
 
         except Exception as e:
             print(f"❌ Error during booking save: {e}")
             raise  # Ensure the exception is raised to avoid silent failures
+
+
 
 from decimal import Decimal
 
@@ -253,7 +273,7 @@ class UtilityExpense(models.Model):
             if not created:
                 # If the MonthlyExpense already exists, add the new total_utilities to the existing one
                 monthly_expense.total_expense += total_utilities
-                monthly_expense.save()
+                
 
         except Exception as e:
             print(f"Error while updating MonthlyExpense: {e}")
@@ -307,7 +327,7 @@ class HouseEarning(models.Model):
             house=house, 
             month=month
         )
-        return earnings
+        return earnings, created
     
 from django.db import models
 
