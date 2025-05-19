@@ -60,6 +60,7 @@ from django.db import transaction
 from datetime import timedelta, date
 from decimal import Decimal
 from django.db.models import Sum
+from django.contrib.auth.models import User
 
 class Booking(models.Model):
     house = models.ForeignKey(House, on_delete=models.CASCADE, related_name='bookings')
@@ -68,13 +69,10 @@ class Booking(models.Model):
     end_date = models.DateField()
     booking_earnings = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))  # New field for earnings
     cleaning_fee = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('50.00'))  # Default cleaning fee
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     def __str__(self):
         return f"Booking for {self.house.name} by {self.customer_name}"
-
-
-
-
 
     def save(self, *args, **kwargs):
         try:
@@ -121,6 +119,7 @@ class Booking(models.Model):
                     raise Exception("❌ Booking earnings calculated as zero.")
 
                 # Save the booking after all fields are assigned
+                #self.booking.user = request.user
                 super().save(*args, **kwargs)
                 print("✅ Booking saved successfully.")
 

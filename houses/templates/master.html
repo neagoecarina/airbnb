@@ -16,6 +16,13 @@
   <!-- Header and Navbar -->
   <header>
     <h1>Welcome to Airbnb Manager</h1>
+    {% if user.is_authenticated %}
+  <div class="text-right">
+    <p class="mb-1">Hello, {{ user.username }}!</p>
+    <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-secondary">Logout</a>
+  </div>
+
+{% endif %}
     <nav>
       <a href="{% url 'home' %}" class="btn" style="background-color: #F4A6C6; color: #fff;">Go to Landing Page</a>
       <a href="/houses/" class="btn" style="background-color: #FFDD80; color: #fff;">Make Booking</a>

@@ -22,16 +22,18 @@ from django.urls import path
 from houses import views  # Make sure to import the views from the 'houses' app
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib.auth.decorators import login_required,admin_required
+from django.contrib.auth.views import LogoutView
 
 urlpatterns = [
     # Admin panel URL
     path('admin/', admin.site.urls),
 
     # Landing page route
-    path('', views.landing_page, name='home'),  # Set the new landing page
+    path('', login_required(views.landing_page), name='home'),  # Set the new landing page
 
     # List of houses
-    path('houses/', views.houses, name='houses_list'),  # List all houses
+    path('houses/', login_required(views.houses), name='houses_list'),  # List all houses
 
     # House details route
     path('houses/<int:house_id>/', views.house_detail, name='details'),  # House details page
@@ -45,7 +47,7 @@ urlpatterns = [
     path('utility-expenses/', views.add_utility_expenses, name='utility_expenses'),
 
     # Manage houses page
-    path('houses/manage/', views.manage_houses, name='manage_houses'),
+    path('houses/manage/', admin_required(views.manage_houses), name='manage_houses'),
 
     # Financial Overview Page
     path('houses/finance-overview/', views.financial_overview, name='financial_overview'),
@@ -80,5 +82,10 @@ urlpatterns = [
 
     path('bookings/', views.booking_list, name='booking_list'),
     path('generate_invoice/<int:booking_id>/', views.generate_invoice, name='generate_invoice'),
+
+    path('register/',views.register, name='register'),
+    path('login/', views.login_view, name='login'),
+    path('logout/', LogoutView.as_view(next_page='/login'), name='logout'),
+
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

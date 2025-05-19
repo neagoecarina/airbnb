@@ -2,6 +2,7 @@
 
 from django.urls import path
 from . import views
+from .views import register, login_view
 
 urlpatterns = [
     # Page showing all houses
@@ -46,5 +47,8 @@ urlpatterns = [
 
     # Delete discount (handled via AJAX)
     path('houses/discounts/delete/<int:discount_id>/', views.delete_discount, name='delete_discount'),
+    
+    path('register/', register, name='register'),
+    path('login/', login_view, name='login'),
 ]
 

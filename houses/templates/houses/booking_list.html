@@ -11,6 +11,7 @@
         <th>House Name</th>  <!-- Added column for House Name -->
         <th>Start Date</th>
         <th>End Date</th>
+        <th>Made by</th>
         <th>Action</th>
       </tr>
     </thead>
@@ -22,6 +23,7 @@
           <td>{{ booking.house.name }}</td>  <!-- Access house name here -->
           <td>{{ booking.start_date }}</td>
           <td>{{ booking.end_date }}</td>
+          <td>{{ booking.user }}</td>
           <td>
             <a href="{% url 'generate_invoice' booking.id %}" class="btn btn-info">Generate Invoice</a>
           </td>

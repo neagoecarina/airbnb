@@ -10,12 +10,39 @@ from decimal import Decimal
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse
 from .models import House
+from django.contrib.auth import get_user_model
+from django.contrib.auth import authenticate, login as auth_login
 
 #def landing_page(request):
     #return render(request, 'landing.html')  # This will load landing.html
 
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import House
+
+User = get_user_model()
+def register(request):
+    if request.method == 'POST':
+        email = request.POST['email']
+        password = request.POST['password']
+        if User.objects.filter(email=email).exists():
+            messages.error(request, 'Email already exists')
+        else:
+            user = User.objects.create_user(username=email, email=email, password=password)
+            messages.success(request, 'Account created successfully')
+            return redirect('login')
+    return render(request, 'houses/register.html')
+
+def login_view(request):
+    if request.method == 'POST':
+        email = request.POST['email']
+        password = request.POST['password']
+        user = authenticate(request,username=email, email=email, password=password)
+        if user is not None:
+            auth_login(request, user)
+            return redirect('/')  # Change as needed
+        else:
+            messages.error(request, 'Invalid credentials')
+    return render(request, 'houses/login.html')
 
 # List all houses
 def houses(request):
@@ -108,6 +135,7 @@ def house_detail(request, house_id):
                 customer_name=customer_name,
                 start_date=start_date,
                 end_date=end_date,
+                user=request.user
             )
 
             #new_booking.save()  # Save the booking, triggering any calculations
