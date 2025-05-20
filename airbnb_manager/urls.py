@@ -36,34 +36,34 @@ urlpatterns = [
     path('houses/', login_required(views.houses), name='houses_list'),  # List all houses
 
     # House details route
-    path('houses/<int:house_id>/', views.house_detail, name='details'),  # House details page
+    path('houses/<int:house_id>/', login_required(views.house_detail), name='details'),  # House details page
 
     # Routes for managing houses
-    path('houses/add/', views.house_form, name='add_house'),  # Add house
-    path('houses/edit/<int:house_id>/', views.house_form, name='edit_house'),  # Edit house
-    path('houses/delete/<int:house_id>/', views.delete_house, name='delete_house'),  # Delete house
+    path('houses/add/', login_required(views.house_form), name='add_house'),  # Add house
+    path('houses/edit/<int:house_id>/', login_required(views.house_form), name='edit_house'),  # Edit house
+    path('houses/delete/<int:house_id>/', login_required(views.delete_house), name='delete_house'),  # Delete house
 
     # Utility expenses route
-    path('utility-expenses/', views.add_utility_expenses, name='utility_expenses'),
+    path('utility-expenses/', login_required(views.add_utility_expenses), name='utility_expenses'),
 
     # Manage houses page
     path('houses/manage/', admin_required(views.manage_houses), name='manage_houses'),
 
     # Financial Overview Page
-    path('houses/finance-overview/', views.financial_overview, name='financial_overview'),
-    path('calculate-taxes/', views.calculate_taxes, name='calculate_taxes'),
+    path('houses/finance-overview/', login_required(views.financial_overview), name='financial_overview'),
+    path('calculate-taxes/', login_required(views.calculate_taxes), name='calculate_taxes'),
 
     # Expense Overview Page (new path)
-    path('houses/expense-overview/', views.expense_overview, name='expense_overview'),  # New route for expense overview
+    path('houses/expense-overview/', login_required(views.expense_overview), name='expense_overview'),  # New route for expense overview
     #House Compare
-    path('houses/house-compare/', views.house_compare, name='house_compare'),
+    path('houses/house-compare/', login_required(views.house_compare), name='house_compare'),
 
     #Discounts
     # Discounts Page (Main View)
-    path('houses/discounts/', views.discounts_page, name='discounts_page'),
+    path('houses/discounts/', login_required(views.discounts_page), name='discounts_page'),
 
     # Set a new discount
-    path('houses/discounts/set/', views.set_discount, name='set_discount'),
+    path('houses/discounts/set/', login_required(views.set_discount), name='set_discount'),
 
     # Get discounted price (if needed elsewhere)
     path('houses/get_discounted_price/', views.get_discounted_price, name='get_discounted_price'),
