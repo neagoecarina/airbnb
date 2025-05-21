@@ -32,17 +32,34 @@ def register(request):
             return redirect('login')
     return render(request, 'houses/register.html')
 
+from django.contrib.auth import authenticate, login as auth_login, get_user_model
+from django.contrib import messages
+from django.shortcuts import render, redirect
+
+User = get_user_model()
+
 def login_view(request):
     if request.method == 'POST':
         email = request.POST['email']
         password = request.POST['password']
-        user = authenticate(request,username=email, email=email, password=password)
-        if user is not None:
-            auth_login(request, user)
-            return redirect('/')  # Change as needed
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            messages.error(request, 'Acest email nu este înregistrat.')
+            return render(request, 'houses/login.html')
+
+        if user.check_password(password):
+            if user.is_active:
+                auth_login(request, user)
+                return redirect('/')  # sau alta pagină
+            else:
+                messages.error(request, 'Contul este dezactivat.')
         else:
-            messages.error(request, 'Invalid credentials')
+            messages.error(request, 'Parola introdusă este greșită.')
+
     return render(request, 'houses/login.html')
+
 
 # List all houses
 def houses(request):
