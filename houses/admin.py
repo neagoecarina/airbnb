@@ -36,7 +36,7 @@ if not admin.site.is_registered(House):
 
 
 class BookingAdmin(admin.ModelAdmin):
-    list_display = ('house', 'start_date', 'end_date', 'customer_name', 'booking_earnings', 'booking_price_with_vat', 'vat_amount')
+    list_display = ('house', 'start_date', 'end_date', 'customer_name', 'user','booking_earnings', 'booking_price_with_vat', 'vat_amount')
     
     search_fields = ['house__name', 'house__address', 'customer_name']  
 

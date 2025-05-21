@@ -1,9 +1,14 @@
 from django.db import models
 from django.utils import timezone
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from decimal import Decimal
-from django.db import transaction
+from django.db import models,transaction
+from django.db.models import Sum
+from django.contrib.auth.models import User
 
+from .utils import get_discounted_price  # Import your discount function
+
+from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 # Create your models here.
 # houses/models.py
 
@@ -19,48 +24,6 @@ class House(models.Model):
     def __str__(self):
         return self.name
 
-
-from decimal import Decimal
-from datetime import date
-from django.db import transaction
-
-from decimal import Decimal
-from django.db import models, transaction
-from django.db.models import Sum
-from datetime import date
-
-from decimal import Decimal
-from django.db import models, transaction
-from datetime import date
-from .utils import get_discounted_price  # Import your discount function
-
-from django.db import transaction
-from django.db.models import Sum
-from decimal import Decimal
-from datetime import date
-from decimal import Decimal
-from datetime import timedelta
-from django.db import transaction
-from django.utils import timezone
-
-from datetime import timedelta
-
-
-from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
-
-from decimal import Decimal
-from datetime import timedelta, date
-from django.db import transaction
-
-from decimal import Decimal
-from datetime import timedelta, date
-from django.db import transaction
-
-from django.db import transaction
-from datetime import timedelta, date
-from decimal import Decimal
-from django.db.models import Sum
-from django.contrib.auth.models import User
 
 class Booking(models.Model):
     house = models.ForeignKey(House, on_delete=models.CASCADE, related_name='bookings')
@@ -207,12 +170,6 @@ class Booking(models.Model):
 
 
 
-from decimal import Decimal
-
-from django.db import models
-from decimal import Decimal
-
-from datetime import datetime
 
 class MonthlyEarning(models.Model):
     month_name = models.DateField()  # Store as DateField, e.g., the first day of the month
@@ -234,10 +191,7 @@ class MonthlyEarning(models.Model):
         earnings, created = MonthlyEarning.objects.get_or_create(month_name=first_day_of_month.date())
         return earnings
 
-from decimal import Decimal   
-from datetime import datetime
-from django.db import models
-from django.utils import timezone
+
 
 class UtilityExpense(models.Model):
     house = models.ForeignKey(House, on_delete=models.CASCADE)
@@ -278,9 +232,7 @@ class UtilityExpense(models.Model):
             print(f"Error while updating MonthlyExpense: {e}")
 
                 
-from datetime import datetime
-from decimal import Decimal
-from django.db import models
+
 
 class YearlyEarning(models.Model):
     year = models.DateField()  # Store as DateField, e.g., the first day of the year
@@ -303,8 +255,7 @@ class YearlyEarning(models.Model):
         return earnings
 
 
-from django.utils import timezone
-from decimal import Decimal
+
 
 class HouseEarning(models.Model):
     house = models.ForeignKey(House, on_delete=models.CASCADE, related_name='house_earnings')
@@ -328,7 +279,7 @@ class HouseEarning(models.Model):
         )
         return earnings, created
     
-from django.db import models
+
 
 class BookingExpense(models.Model):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE)
@@ -340,8 +291,7 @@ class BookingExpense(models.Model):
         return f"{self.expense_type} for {self.booking.house.name} in {self.date.strftime('%m/%Y')}"
 
     
-from django.db import models
-from decimal import Decimal
+
 
 class MonthlyExpense(models.Model):
     house = models.ForeignKey('House', on_delete=models.CASCADE)
@@ -370,8 +320,7 @@ class MonthlyExpense(models.Model):
 
         return monthly_expense
 
-from django.db import models
-from django.utils import timezone
+
 
 class Discount(models.Model):
     house = models.ForeignKey(House, on_delete=models.CASCADE, related_name="discounts")
