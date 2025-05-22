@@ -30,7 +30,6 @@ def update_earnings_on_booking_delete(sender, instance, **kwargs):
 
     # Delete related expenses
     BookingExpense.objects.filter(booking=instance).delete()
-
 @receiver(post_delete, sender=BookingExpense)
 @receiver(post_delete, sender=UtilityExpense)
 def update_monthly_expenses_on_delete(sender, instance, **kwargs):
@@ -38,14 +37,16 @@ def update_monthly_expenses_on_delete(sender, instance, **kwargs):
 
     if isinstance(instance, BookingExpense):
         house = instance.booking.house
+        amount = instance.amount  # presupun că BookingExpense are câmpul amount
     else:
         house = instance.house
+        amount = instance.total_expense  # aici folosim total_expense, nu amount
 
     month_start = instance.date.replace(day=1)
 
     try:
         monthly_expense = MonthlyExpense.objects.get(house=house, date=month_start)
-        monthly_expense.total_expense -= instance.amount
+        monthly_expense.total_expense -= amount
         if monthly_expense.total_expense < 0:
             monthly_expense.total_expense = 0
         monthly_expense.save()
