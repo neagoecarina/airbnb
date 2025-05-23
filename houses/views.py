@@ -20,16 +20,30 @@ from django.shortcuts import render, redirect, get_object_or_404
 from .models import House
 
 User = get_user_model()
+
 def register(request):
     if request.method == 'POST':
+        username = request.POST['username']
+        first_name = request.POST['first_name']
+        last_name = request.POST['last_name']
         email = request.POST['email']
         password = request.POST['password']
+
         if User.objects.filter(email=email).exists():
             messages.error(request, 'Email already exists')
+        elif User.objects.filter(username=username).exists():
+            messages.error(request, 'Username already exists')
         else:
-            user = User.objects.create_user(username=email, email=email, password=password)
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                first_name=first_name,
+                last_name=last_name
+            )
             messages.success(request, 'Account created successfully')
             return redirect('login')
+
     return render(request, 'houses/register.html')
 
 from django.contrib.auth import authenticate, login as auth_login, get_user_model
