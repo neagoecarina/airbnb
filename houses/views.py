@@ -50,30 +50,45 @@ from django.contrib.auth import authenticate, login as auth_login, get_user_mode
 from django.contrib import messages
 from django.shortcuts import render, redirect
 
-User = get_user_model()
+from django.contrib.auth.models import User
+from django.contrib import messages
+from django.contrib.auth import login as auth_login
+from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.contrib.auth import authenticate, login as auth_login
+from django.contrib.auth import get_user_model
 
+User = get_user_model()
 def login_view(request):
     if request.method == 'POST':
-        email = request.POST['email']
-        password = request.POST['password']
+        login_input = request.POST.get('login')
+        password = request.POST.get('password')
 
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            messages.error(request, 'Acest email nu este înregistrat.')
+        print(f"[DEBUG] login_input = {repr(login_input)}")
+
+        user = User.objects.filter(email=login_input).first()
+        if not user:
+            user = User.objects.filter(username=login_input).first()
+
+        print(f"[DEBUG] user = {user}")
+
+        if user is None:
+            messages.error(request, 'Email-ul sau username-ul introdus nu este înregistrat.')
             return render(request, 'houses/login.html')
 
-        if user.check_password(password):
-            if user.is_active:
-                auth_login(request, user)
-                return redirect('/')  # sau alta pagină
-            else:
-                messages.error(request, 'Contul este dezactivat.')
-        else:
+        if not user.check_password(password):
             messages.error(request, 'Parola introdusă este greșită.')
+            return render(request, 'houses/login.html')
+
+        if not user.is_active:
+            messages.error(request, 'Contul este dezactivat.')
+            return render(request, 'houses/login.html')
+
+        auth_login(request, user)
+        return redirect('/')
 
     return render(request, 'houses/login.html')
-
 
 # List all houses
 def houses(request):
