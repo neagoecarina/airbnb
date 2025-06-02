@@ -1501,26 +1501,52 @@ import calendar
 
 # Add the necessary calculations in the view
 def calculate_longest_booking(house_id, month, year):
-    bookings = Booking.objects.filter(house_id=house_id, start_date__year=year, start_date__month=month)
+    # Filter by month and year always
+    filters = {
+        "start_date__year": year,
+        "start_date__month": month
+    }
+
+    # Only filter by house if a specific house_id is given
+    if house_id is not None:
+        filters["house_id"] = house_id
+
+    bookings = Booking.objects.filter(**filters)
+
     longest_booking = 0
     for booking in bookings:
-        booking_length = (booking.end_date - booking.start_date).days
+        booking_length = (booking.end_date - booking.start_date).days + 1
         longest_booking = max(longest_booking, booking_length)
+
     return longest_booking
 
 def calculate_average_booking_length(house_id, month, year):
-    bookings = Booking.objects.filter(house_id=house_id, start_date__year=year, start_date__month=month)
+    filters = {
+        "start_date__year": year,
+        "start_date__month": month
+    }
+    if house_id is not None:
+        filters["house_id"] = house_id
+
+    bookings = Booking.objects.filter(**filters)
     total_days = 0
     total_bookings = bookings.count()
     for booking in bookings:
-        total_days += (booking.end_date - booking.start_date).days
+        total_days += (booking.end_date - booking.start_date).days + 1
     return round(total_days / total_bookings, 2) if total_bookings else 0
 
 def calculate_booking_length_distribution(house_id, month, year):
-    bookings = Booking.objects.filter(house_id=house_id, start_date__year=year, start_date__month=month)
+    filters = {
+        "start_date__year": year,
+        "start_date__month": month
+    }
+    if house_id is not None:
+        filters["house_id"] = house_id
+
+    bookings = Booking.objects.filter(**filters)
     distribution = {"1-3 days": 0, "4-7 days": 0, "8+ days": 0}
     for booking in bookings:
-        booking_length = (booking.end_date - booking.start_date).days
+        booking_length = (booking.end_date - booking.start_date).days + 1
         if booking_length <= 3:
             distribution["1-3 days"] += 1
         elif 4 <= booking_length <= 7:
@@ -1530,6 +1556,8 @@ def calculate_booking_length_distribution(house_id, month, year):
     total_bookings = bookings.count()
     distribution_percent = {k: (v / total_bookings) * 100 if total_bookings else 0 for k, v in distribution.items()}
     return distribution_percent
+
+
 
 def calculate_bookings_this_week(house_id):
     today = datetime.today()
@@ -1543,15 +1571,28 @@ def calculate_bookings_last_week(house_id):
     end_of_last_week = start_of_last_week + timedelta(days=6)  # Sunday of last week
     return Booking.objects.filter(house_id=house_id, start_date__gte=start_of_last_week, start_date__lte=end_of_last_week).count()
 
+
 def calculate_most_common_booking_days(house_id, month, year):
-    bookings = Booking.objects.filter(house_id=house_id, start_date__year=year, start_date__month=month)
-    day_counts = {i: 0 for i in range(7)}  # For each day of the week, 0 - Monday, 6 - Sunday
+    filters = {
+        "start_date__year": year,
+        "start_date__month": month
+    }
+    if house_id is not None:
+        filters["house_id"] = house_id
+
+    bookings = Booking.objects.filter(**filters)
+    day_counts = {i: 0 for i in range(7)}  # 0 = Monday, ..., 6 = Sunday
+
     for booking in bookings:
-        day_of_week = booking.start_date.weekday()  # 0 - Monday, 6 - Sunday
+        day_of_week = booking.start_date.weekday()
         day_counts[day_of_week] += 1
-    # Find the day with the highest count
+
+    if all(count == 0 for count in day_counts.values()):
+        return "No bookings"
+
     most_common_day = max(day_counts, key=day_counts.get)
-    return calendar.day_name[most_common_day]  # Convert to day name (e.g., "Monday")
+    return calendar.day_name[most_common_day]
+
 
 from datetime import datetime
 import calendar
@@ -1566,7 +1607,9 @@ def house_compare(request):
 
     selected_month = int(request.GET.get('month', current_date.month))  # Default to current month
     selected_year = int(request.GET.get('year', current_year))  # Default to current year
-    house_id = request.GET.get('house', '')  # Get house_id from the URL query parameters
+    #house_id = request.GET.get('house', '')  # Get house_id from the URL query parameters
+    house_id_str = request.GET.get('house', '')
+    house_id = int(house_id_str) if house_id_str.isdigit() else None
 
     if selected_month == 0:
         selected_month = current_date.month  # Set to the current month if "all months" is selected
@@ -1613,7 +1656,7 @@ def house_compare(request):
         })
 
         # If a specific house is selected, gather the detailed metrics
-        if house_id and house.id == int(house_id):
+        if house_id is not None and house.id == house_id:
             longest_booking = calculate_longest_booking(house.id, selected_month, selected_year)
             average_booking_length = calculate_average_booking_length(house.id, selected_month, selected_year)
             booking_length_distribution = calculate_booking_length_distribution(house.id, selected_month, selected_year)
@@ -1631,7 +1674,26 @@ def house_compare(request):
 
     # If no house is selected, show a message
     if not house_id:
-        selected_house_data = {"message": "Select a house/month/year to display metrics"}
+        # Aggregate metrics for all houses
+        longest_booking = calculate_longest_booking(None, selected_month, selected_year)
+        average_booking_length = calculate_average_booking_length(None, selected_month, selected_year)
+        booking_length_distribution = calculate_booking_length_distribution(None, selected_month, selected_year)
+        most_common_booking_day = calculate_most_common_booking_days(None, selected_month, selected_year)
+
+        total_bookings = Booking.objects.filter(
+            start_date__month=selected_month,
+            start_date__year=selected_year
+        ).count()
+
+        selected_house_data = {
+            "house": {"name": "All Houses"},
+            "longest_booking": longest_booking,
+            "average_booking_length": average_booking_length,
+            "booking_length_distribution": booking_length_distribution,
+            "total_bookings": total_bookings,
+            "most_common_booking_day": most_common_booking_day
+    }
+
 
     return render(request, "houses/house_compare.html", {
         "houses": houses,
