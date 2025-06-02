@@ -1,5 +1,4 @@
 {% extends 'master.html' %}
-
 {% block content %}
 {% load static %}
 <link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/fullcalendar.min.css" rel="stylesheet">
@@ -9,7 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/locale/en-gb.js"></script>
 
 <style>
-    .container {
+    .dashboard-container {
         display: flex;
         flex-wrap: wrap;
         gap: 20px;
@@ -58,7 +57,7 @@
 
 <h1>Dashboard</h1>
 
-<div class="container">
+<div class="dashboard-container">
     <!-- Left Side: Revenue & Expenses -->
     <div class="left-side">
         <div class="card">
