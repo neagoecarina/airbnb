@@ -1115,6 +1115,8 @@ from .models import MonthlyEarning, HouseEarning, Booking, UtilityExpense, Booki
 from django.utils import timezone
 from django.db.models import ExpressionWrapper, IntegerField
 from decimal import Decimal
+from django.db.models import Case, When, DateField
+from django.db.models.functions import Greatest, Least
 
 
 def landing_page(request):
@@ -1160,25 +1162,69 @@ def landing_page(request):
     upcoming_bookings = Booking.objects.filter(start_date__gte=datetime.now()).order_by("start_date")
 
     # Occupancy Rate Calculation
+    #total_nights_in_month = (end_date - start_date).days + 1
+    #total_houses = House.objects.count()
+
+    #booked_nights = Booking.objects.filter(
+        #start_date__lte=end_date,
+        #end_date__gte=start_date
+    #).annotate(nights=ExpressionWrapper(F('end_date') - F('start_date') + 1, output_field=IntegerField())) \
+    #.aggregate(total_booked_nights=Sum('nights'))['total_booked_nights'] or 0
+
+    #occupancy_rate = (booked_nights / (total_nights_in_month * total_houses) * 100) if total_houses > 0 else 0
+    #occupancy_rate = round(occupancy_rate, 2)  # Now it works correctly!
+    # Bookings overlapping with current month
+    bookings_in_month = Booking.objects.filter(
+        start_date__lte=end_date,
+        end_date__gte=start_date
+    ).annotate(
+        # Get actual nights booked within the current month
+        adjusted_start=Greatest(F('start_date'), start_date),
+        adjusted_end=Least(F('end_date'), end_date),
+    ).annotate(
+        nights=ExpressionWrapper(
+            F('adjusted_end') - F('adjusted_start') + timedelta(days=1),
+            output_field=IntegerField()
+        )
+    )
+
+    booked_nights = bookings_in_month.aggregate(total_booked_nights=Sum('nights'))['total_booked_nights'] or 0
+
+    # Total available nights = days in month * number of houses
     total_nights_in_month = (end_date - start_date).days + 1
     total_houses = House.objects.count()
 
-    booked_nights = Booking.objects.filter(
-        start_date__lte=end_date,
-        end_date__gte=start_date
-    ).annotate(nights=ExpressionWrapper(F('end_date') - F('start_date') + 1, output_field=IntegerField())) \
-    .aggregate(total_booked_nights=Sum('nights'))['total_booked_nights'] or 0
-
     occupancy_rate = (booked_nights / (total_nights_in_month * total_houses) * 100) if total_houses > 0 else 0
-    occupancy_rate = round(occupancy_rate, 2)  # Now it works correctly!
+    occupancy_rate = round(occupancy_rate, 2)
+    
 
-    # Most Frequently Booked Property
-    most_booked_property = Booking.objects.values('house__name').annotate(count=Count('id')).order_by('-count').first()
+
+    # Most Frequently Booked Property for the current month
+    most_booked_property = Booking.objects.filter(
+        start_date__gte=start_date,
+        start_date__lte=end_date
+    ).values('house__name').annotate(count=Count('id')).order_by('-count').first()
+
     most_booked_property_name = most_booked_property['house__name'] if most_booked_property else "N/A"
 
+
     # Average Booking Duration
-    avg_booking_duration = Booking.objects.annotate(nights=(F('end_date') - F('start_date') + timedelta(days=1))) \
-    .aggregate(Avg('nights'))['nights__avg'] or 0
+    #avg_booking_duration = Booking.objects.annotate(nights=(F('end_date') - F('start_date') + timedelta(days=1))) \
+    #.aggregate(Avg('nights'))['nights__avg'] or 0
+    # Average Booking Duration for the current month
+    avg_booking_duration = Booking.objects.filter(
+        start_date__gte=start_date,
+        start_date__lte=end_date
+    ).annotate(
+        nights=ExpressionWrapper(F('end_date') - F('start_date') + timedelta(days=1), output_field=DurationField())
+    ).aggregate(
+        avg_nights=Avg('nights')
+    )['avg_nights'] or timedelta(days=0)
+
+    # Convert to days and round
+    avg_booking_duration = avg_booking_duration.days if isinstance(avg_booking_duration, timedelta) else avg_booking_duration
+    avg_booking_duration = round(avg_booking_duration, 1)
+
 
     # Ensure avg_booking_duration is a valid number
     if isinstance(avg_booking_duration, timedelta):

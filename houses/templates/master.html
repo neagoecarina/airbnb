@@ -44,6 +44,7 @@
 
     /* Default navbar styling (not sticky yet) */
     .navbar {
+      height: 60px;
       background-color: #fff;
       padding-top: 0.3rem;
       padding-bottom: 0.3rem;
@@ -61,7 +62,11 @@
     }
 
     .navbar-brand img {
-      height: 50px;
+      height: 100%;
+      width: auto; /* ca să nu se întindă disproporționat */
+      max-height: 60px; /* înălțimea navbarului */
+      object-fit: contain; /* să păstreze aspectul */
+      display: block;
     }
 
     .navbar-nav {
@@ -92,7 +97,8 @@
     }
 
     .navbar-text {
-      color: #555;
+      color: #007bff; /* ex: albastru bootstrap */
+      font-weight: 600;
     }
 
     .btn-outline-secondary {
@@ -150,7 +156,7 @@
 
     <!-- Brand -->
     <a class="navbar-brand d-flex align-items-center mr-4" href="{% url 'home' %}">
-      <img src="{% static 'images/logo.png' %}" alt="Logo" height="35" onerror="this.style.display='none';" />
+      <img src="{% static 'images/logo.png' %}" alt="Logo" onerror="this.style.display='none';" />
     </a>
 
     <!-- Toggle button for mobile -->
