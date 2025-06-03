@@ -1,14 +1,11 @@
 <!-- houses/templates/houses/edit_discount.html -->
 {% extends 'master.html' %}
 
-
-
-
 {% block content %}
   <div class="container mt-4">
     <h2 class="text-center mb-4" style="font-family: 'Arial', sans-serif; color: #333;">Edit Discount</h2>
 
-    <form method="post" class="p-4 border rounded shadow-sm" style="background-color: #f9f9f9;">
+    <form method="post" class="p-4 border rounded shadow-sm" style="background-color: #f9f9f9;" id="editDiscountForm">
       {% csrf_token %}
       
       <div class="form-group mb-3">
@@ -25,6 +22,22 @@
     </div>
   </div>
 
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const form = document.getElementById("editDiscountForm");
+
+      form.addEventListener("submit", function (e) {
+        const startDateInput = document.querySelector("input[name='start_date']");
+        const endDateInput = document.querySelector("input[name='end_date']");
+
+        const startDate = new Date(startDateInput.value);
+        const endDate = new Date(endDateInput.value);
+
+        if (startDate >= endDate) {
+          e.preventDefault();
+          alert("Start date must be before end date.");
+        }
+      });
+    });
+  </script>
 {% endblock %}
-
-
