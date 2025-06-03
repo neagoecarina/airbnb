@@ -14,7 +14,7 @@
     {% endif %}
 
     <!-- Form for setting discounts -->
-    <form method="POST" action="{% url 'discounts_page' %}">
+    <form method="POST" action="{% url 'discounts_page' %}" id="discountForm">
         {% csrf_token %}
         <div class="row mb-3">
             <div class="col-md-4">
@@ -111,6 +111,16 @@
                     alert("There was an error deleting the discount.");
                 });
             });
+        });
+        // Date validation before form submission
+        document.getElementById("discountForm").addEventListener("submit", function (e) {
+            const startDate = new Date(document.getElementById("start_date").value);
+            const endDate = new Date(document.getElementById("end_date").value);
+
+            if (startDate >= endDate) {
+                e.preventDefault();
+                alert("Start date must be before end date.");
+            }
         });
     });
 </script>
