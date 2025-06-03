@@ -242,6 +242,9 @@ def add_utility_expenses(request):
         electricity_expense = request.POST.get('electricity')
         proceed = request.POST.get('proceed')  # Check if user confirmed update
 
+        if not water_expense and not electricity_expense:
+            return JsonResponse({"message": "Please enter at least one expense (water or electricity)."}, status=400)
+    
         # Validate input fields (only if they are not empty)
         if water_expense and not isValidDecimal(water_expense):
             return JsonResponse({"message": "Invalid water expense value."}, status=400)
