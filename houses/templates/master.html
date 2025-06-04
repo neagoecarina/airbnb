@@ -179,10 +179,14 @@
         <li class="nav-item"><a href="{% url 'booking_list' %}" class="nav-link px-2">View Bookings</a></li>
         <li class="nav-item"><a href="/admin/" class="nav-link px-2">Admin</a></li>
 
+
         {% if user.is_authenticated %}
         <li class="nav-item d-flex align-items-center ml-3">
           <span class="navbar-text mr-2 small text-secondary">Hello, {{ user.username }}!</span>
-          <a href="{% url 'logout' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1">Logout</a>
+          <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1">Logout</button>
+          </form>
         </li>
         {% endif %}
       </ul>

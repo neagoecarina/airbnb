@@ -3,6 +3,8 @@
 from django.urls import path
 from . import views
 from .views import register, login_view
+from django.contrib.auth.views import LogoutView
+
 
 urlpatterns = [
     # Page showing all houses
@@ -50,5 +52,7 @@ urlpatterns = [
     
     path('register/', register, name='register'),
     path('login/', login_view, name='login'),
+    path('logout/', LogoutView.as_view(next_page='/login', http_method_names=['get', 'post']), name='logout'),
+
 ]
 
