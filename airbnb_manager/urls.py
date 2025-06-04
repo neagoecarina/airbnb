@@ -22,7 +22,8 @@ from django.urls import path
 from houses import views  # Make sure to import the views from the 'houses' app
 from django.conf import settings
 from django.conf.urls.static import static
-from django.contrib.auth.decorators import login_required, admin_required
+from django.contrib.auth.decorators import login_required
+from houses.decorators import admin_required
 from django.contrib.auth.views import LogoutView
 
 urlpatterns = [
