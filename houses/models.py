@@ -33,6 +33,7 @@ class Booking(models.Model):
     booking_earnings = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))  # New field for earnings
     cleaning_fee = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('50.00'))  # Default cleaning fee
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    note = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"Booking for {self.house.name} by {self.customer_name}"

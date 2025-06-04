@@ -32,7 +32,9 @@ urlpatterns = [
 
     path('bookings/', views.booking_list, name='booking_list'),
     path('generate_invoice/<int:booking_id>/', views.generate_invoice, name='generate_invoice'),
-
+    path('booking/<int:booking_id>/edit/', views.edit_booking, name='edit_booking'),
+    path('booking/<int:booking_id>/delete/', views.delete_booking, name='delete_booking'),
+    path('booking/<int:booking_id>/add-note/', views.add_note, name='add_note'),
     #Discounts
 
      # Discounts Page (Main View)

@@ -12,7 +12,7 @@ from django.http import HttpResponse
 from .models import House
 from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate, login as auth_login
-
+from .forms import BookingForm
 #def landing_page(request):
     #return render(request, 'landing.html')  # This will load landing.html
 
@@ -1023,11 +1023,44 @@ from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
 from .models import Booking
 from decimal import Decimal
+from django.core.exceptions import PermissionDenied
 
 def booking_list(request):
     bookings = Booking.objects.all()  # Fetch all bookings
     
     return render(request, 'houses/booking_list.html', {'bookings': bookings})
+
+def edit_booking(request, booking_id):
+    if not request.user.is_staff and not request.user.is_superuser:
+        raise PermissionDenied("You do not have permission to edit bookings.")
+    booking = get_object_or_404(Booking, id=booking_id)
+    if request.method == 'POST':
+        form = BookingForm(request.POST, instance=booking)
+        if form.is_valid():
+            form.save()
+            return redirect('booking_list')
+    else:
+        form = BookingForm(instance=booking)
+    return render(request, 'houses/edit_booking.html', {'form': form, 'booking': booking})
+
+def delete_booking(request, booking_id):
+    if not request.user.is_staff and not request.user.is_superuser:
+        raise PermissionDenied("You do not have permission to delete bookings.")
+    booking = get_object_or_404(Booking, id=booking_id)
+    if request.method == 'POST':
+        booking.delete()
+        return redirect('booking_list')
+    return render(request, 'houses/delete_booking.html', {'booking': booking})
+
+def add_note(request, booking_id):
+    booking = get_object_or_404(Booking, id=booking_id)
+    if request.method == 'POST':
+        note = request.POST.get('note')
+        booking.note = note
+        booking.save()
+        return redirect('booking_list')
+    return render(request, 'houses/add_note.html', {'booking': booking})
+
 
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404

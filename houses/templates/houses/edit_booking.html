@@ -1,0 +1,11 @@
+{% extends 'master.html' %}
+
+{% block content %}
+  <h2>Edit Booking #{{ booking.id }}</h2>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-success">Save Changes</button>
+    <a href="{% url 'booking_list' %}" class="btn btn-secondary">Cancel</a>
+  </form>
+{% endblock %}
