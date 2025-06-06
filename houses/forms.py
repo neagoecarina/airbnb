@@ -25,12 +25,37 @@ from .models import CleaningFeeSetting, CleaningFeePerHouse, House
 class CleaningFeeForm(forms.ModelForm):
     class Meta:
         model = CleaningFeeSetting
-        fields = ['amount']  # corect, câmpul din model este amount
+        fields = ['amount']
+        widgets = {
+            'amount': forms.NumberInput(attrs={
+                'step': '0.01',
+                'min': '0',
+                'class': 'form-control',
+                'placeholder': 'e.g. 25.00',
+            }),
+        }
+
+    def clean_amount(self):
+        amount = self.cleaned_data.get('amount')
+        if amount is not None and amount < 0:
+            raise forms.ValidationError("The cleaning fee cannot be negative.")
+        return amount
 
 class HouseCleaningFeeForm(forms.ModelForm):
     class Meta:
-        model = CleaningFeePerHouse  # schimbă modelul aici
-        fields = ['amount']  # câmpul de cleaning fee per house este amount
+        model = CleaningFeePerHouse
+        fields = ['amount']
         widgets = {
-            'amount': forms.NumberInput(attrs={'step': '0.01', 'class': 'form-control'}),
+            'amount': forms.NumberInput(attrs={
+                'step': '0.01',
+                'min': '0',
+                'class': 'form-control',
+                'placeholder': 'e.g. 25.00',
+            }),
         }
+
+    def clean_amount(self):
+        amount = self.cleaned_data.get('amount')
+        if amount is not None and amount < 0:
+            raise forms.ValidationError("The cleaning fee cannot be negative.")
+        return amount
