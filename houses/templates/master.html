@@ -31,7 +31,6 @@
       padding: 0 15px;
     }
 
-    /* Hero banner styles */
     .hero {
       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
         url('{% static "images/airbnb-banner.jpg" %}') center/cover no-repeat;
@@ -42,7 +41,6 @@
       z-index: 1000;
     }
 
-    /* Default navbar styling (not sticky yet) */
     .navbar {
       height: 60px;
       background-color: #fff;
@@ -53,7 +51,6 @@
       transition: all 0.3s ease;
     }
 
-    /* Sticky navbar when scrolled into view */
     .navbar.sticky-on-scroll {
       position: sticky;
       top: 0;
@@ -63,9 +60,9 @@
 
     .navbar-brand img {
       height: 100%;
-      width: auto; /* ca să nu se întindă disproporționat */
-      max-height: 60px; /* înălțimea navbarului */
-      object-fit: contain; /* să păstreze aspectul */
+      width: auto;
+      max-height: 60px;
+      object-fit: contain;
       display: block;
     }
 
@@ -97,7 +94,7 @@
     }
 
     .navbar-text {
-      color: #007bff; /* ex: albastru bootstrap */
+      color: #007bff;
       font-weight: 600;
     }
 
@@ -114,6 +111,18 @@
       background-color: #ddd;
       color: #222;
       border-color: #bbb;
+    }
+
+    /* User info - ușor diferit vizual */
+    .user-info {
+      background-color: #eaf3ff;
+      box-shadow: 0 1px 4px rgb(0 0 0 / 0.1);
+      padding: 8px 30px;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      font-size: 0.9rem;
+      gap: 15px;
     }
 
     footer {
@@ -133,6 +142,29 @@
     .container a.btn {
       margin-top: 20px;
     }
+
+    /* Scroll to Top Button */
+    #scrollToTopBtn {
+      display: none;
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      z-index: 1000;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      font-size: 20px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      transition: background-color 0.3s;
+    }
+
+    #scrollToTopBtn:hover {
+      background-color: #0056b3;
+    }
   </style>
 </head>
 <body>
@@ -149,50 +181,46 @@
     </div>
   </section>
 
-  <!-- Navbar below hero -->
-<!-- Navbar below hero -->
-<nav class="navbar navbar-expand-lg navbar-light shadow-sm py-2">
-  <div class="container-fluid px-4 d-flex align-items-center justify-content-between">
-
-    <!-- Brand -->
-    <a class="navbar-brand d-flex align-items-center mr-4" href="{% url 'home' %}">
-      <img src="{% static 'images/logo.png' %}" alt="Logo" onerror="this.style.display='none';" />
-    </a>
-
-    <!-- Toggle button for mobile -->
-    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" 
-      aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-
-    <!-- Nav links -->
-    <div class="collapse navbar-collapse" id="navbarNav">
-      <ul class="navbar-nav d-flex w-100 justify-content-between align-items-center" style="font-size: 0.9rem;">
-        <li class="nav-item"><a href="{% url 'home' %}" class="nav-link px-2">Home</a></li>
-        <li class="nav-item"><a href="/houses/" class="nav-link px-2">Make Booking</a></li>
-        <li class="nav-item"><a href="/utility-expenses/" class="nav-link px-2">Utility Expenses</a></li>
-        <li class="nav-item"><a href="{% url 'manage_houses' %}" class="nav-link px-2">Manage Houses</a></li>
-        <li class="nav-item"><a href="{% url 'discounts_page' %}" class="nav-link px-2">Discounts</a></li>
-        <li class="nav-item"><a href="{% url 'financial_overview' %}" class="nav-link px-2">Financial Overview</a></li>
-        <li class="nav-item"><a href="{% url 'expense_overview' %}" class="nav-link px-2">Expense Overview</a></li>
-        <li class="nav-item"><a href="{% url 'house_compare' %}" class="nav-link px-2">House Analytics</a></li>
-        <li class="nav-item"><a href="{% url 'booking_list' %}" class="nav-link px-2">View Bookings</a></li>
-        <li class="nav-item"><a href="/admin/" class="nav-link px-2">Admin</a></li>
-
-
-        {% if user.is_authenticated %}
-        <li class="nav-item d-flex align-items-center ml-3">
-          <span class="navbar-text mr-2 small text-secondary">Hello, {{ user.username }}!</span>
-          <form method="post" action="{% url 'logout' %}">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1">Logout</button>
-          </form>
-        </li>
-        {% endif %}
-      </ul>
-    </div>
+  <!-- Greeting + logout -->
+  <div class="user-info">
+    {% if user.is_authenticated %}
+      <span class="text-secondary">Hello, {{ user.username }}!</span>
+      <form method="post" action="{% url 'logout' %}" class="mb-0">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1">Logout</button>
+      </form>
+    {% endif %}
   </div>
-</nav>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-light shadow-sm py-2">
+    <div class="container-fluid px-4 d-flex align-items-center justify-content-between">
+      <a class="navbar-brand d-flex align-items-center mr-4" href="{% url 'home' %}">
+        <img src="{% static 'images/logo.png' %}" alt="Logo" onerror="this.style.display='none';" />
+      </a>
+
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
+        aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav d-flex w-100 justify-content-between align-items-center" style="font-size: 0.9rem;">
+          <li class="nav-item"><a href="{% url 'home' %}" class="nav-link px-2">Home</a></li>
+          <li class="nav-item"><a href="/houses/" class="nav-link px-2">Make Booking</a></li>
+          <li class="nav-item"><a href="{% url 'edit_cleaning_fee' %}" class="nav-link px-2">Cleaning Fee</a></li>
+          <li class="nav-item"><a href="/utility-expenses/" class="nav-link px-2">Utility Expenses</a></li>
+          <li class="nav-item"><a href="{% url 'manage_houses' %}" class="nav-link px-2">Manage Houses</a></li>
+          <li class="nav-item"><a href="{% url 'discounts_page' %}" class="nav-link px-2">Discounts</a></li>
+          <li class="nav-item"><a href="{% url 'financial_overview' %}" class="nav-link px-2">Financial Overview</a></li>
+          <li class="nav-item"><a href="{% url 'expense_overview' %}" class="nav-link px-2">Expense Overview</a></li>
+          <li class="nav-item"><a href="{% url 'house_compare' %}" class="nav-link px-2">House Analytics</a></li>
+          <li class="nav-item"><a href="{% url 'booking_list' %}" class="nav-link px-2">View Bookings</a></li>
+          <li class="nav-item"><a href="/admin/" class="nav-link px-2">Admin</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
 
   <!-- Main Content -->
   <main class="container mt-5">
@@ -205,12 +233,15 @@
     <p class="mb-0">&copy; 2025 Airbnb Manager. Built with ❤️ for you.</p>
   </footer>
 
+  <!-- Scroll to Top Button -->
+  <button id="scrollToTopBtn" title="Scroll to top">↑</button>
+
   <!-- Scripts -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@3.9.0/dist/fullcalendar.min.js"></script>
 
-  <!-- Sticky Navbar on Scroll -->
+  <!-- Sticky Navbar -->
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       const navbar = document.querySelector(".navbar");
@@ -230,6 +261,16 @@
       if (hero && navbar) {
         observer.observe(hero);
       }
+
+      // Scroll to top button
+      const scrollBtn = document.getElementById("scrollToTopBtn");
+      window.addEventListener("scroll", () => {
+        scrollBtn.style.display = window.scrollY > 300 ? "block" : "none";
+      });
+
+      scrollBtn.addEventListener("click", () => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
     });
   </script>
 

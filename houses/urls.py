@@ -52,6 +52,8 @@ urlpatterns = [
     # Delete discount (handled via AJAX)
     path('houses/discounts/delete/<int:discount_id>/', views.delete_discount, name='delete_discount'),
     
+    path('houses/cleaning-fee/', views.edit_cleaning_fee, name='edit_cleaning_fee'),
+
     path('register/', register, name='register'),
     path('login/', login_view, name='login'),
     path('logout/', LogoutView.as_view(next_page='/login', http_method_names=['get', 'post']), name='logout'),

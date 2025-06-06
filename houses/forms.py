@@ -19,3 +19,11 @@ class BookingForm(forms.ModelForm):
             'start_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'end_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
         }
+
+from django import forms
+from .models import CleaningFeeSetting
+
+class CleaningFeeForm(forms.ModelForm):
+    class Meta:
+        model = CleaningFeeSetting
+        fields = ['amount']

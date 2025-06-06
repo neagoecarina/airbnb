@@ -1989,3 +1989,24 @@ def get_discounted_price_for_day(request):
 
     # Return the discounted price as JSON
     return JsonResponse({'discounted_price': round(discounted_price, 2)})  # Return rounded to 2 decimal places
+
+
+from django.shortcuts import render, redirect
+from .models import CleaningFeeSetting
+from .forms import CleaningFeeForm
+
+
+
+def edit_cleaning_fee(request):
+    setting, _ = CleaningFeeSetting.objects.get_or_create(id=1)
+    
+    if request.method == 'POST':
+        form = CleaningFeeForm(request.POST, instance=setting)
+        if form.is_valid():
+            form.save()
+            # după salvare afișăm modalul de succes
+            return render(request, 'houses/edit_cleaning_fee.html', {'form': form, 'success': True})
+    else:
+        form = CleaningFeeForm(instance=setting)
+        
+    return render(request, 'houses/edit_cleaning_fee.html', {'form': form})

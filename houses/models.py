@@ -9,7 +9,7 @@ from django.contrib.auth.models import User
 from .utils import get_discounted_price  # Import your discount function
 
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
-# Create your models here.
+
 # houses/models.py
 
 
@@ -31,7 +31,8 @@ class Booking(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     booking_earnings = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))  # New field for earnings
-    cleaning_fee = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('50.00'))  # Default cleaning fee
+    #cleaning_fee = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('50.00'))  # Default cleaning fee
+    cleaning_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     note = models.TextField(blank=True, null=True)
 
@@ -96,7 +97,8 @@ class Booking(models.Model):
                     booking_expense = BookingExpense.objects.create(
                         booking=self,
                         expense_type="Cleaning Fee",
-                        amount=self.cleaning_fee,
+                        #amount=self.cleaning_fee,
+                        amount=CleaningFeeSetting.get_current_fee(),
                         date=self.start_date  # Pass full date here
                     )
                     print(f"✅ Cleaning fee expense created: {booking_expense.amount}")
@@ -338,3 +340,14 @@ class Discount(models.Model):
         if not check_date:
             check_date = timezone.now().date()
         return self.start_date <= check_date <= self.end_date
+
+class CleaningFeeSetting(models.Model):
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('50.00'))
+
+    def __str__(self):
+        return f"Cleaning Fee: {self.amount} RON"
+
+    @staticmethod
+    def get_current_fee():
+        setting, _ = CleaningFeeSetting.objects.get_or_create(id=1)
+        return setting.amount

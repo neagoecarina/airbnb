@@ -87,6 +87,9 @@ urlpatterns = [
     path('booking/<int:booking_id>/delete/', views.delete_booking, name='delete_booking'),
     path('booking/<int:booking_id>/add-note/', views.add_note, name='add_note'),
 
+    path('houses/cleaning-fee/', views.edit_cleaning_fee, name='edit_cleaning_fee'),
+
+
     path('register/',views.register, name='register'),
     path('login/', views.login_view, name='login'),
 
