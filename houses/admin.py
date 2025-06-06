@@ -166,6 +166,15 @@ class MonthlyExpenseAdmin(admin.ModelAdmin):
 
 
 from django.contrib import admin
-from .models import Discount
+from .models import Discount, CleaningFeeSetting,CleaningFeePerHouse
 
 admin.site.register(Discount)
+
+
+@admin.register(CleaningFeeSetting)
+class CleaningFeeSettingAdmin(admin.ModelAdmin):
+    list_display = ('amount',)
+
+@admin.register(CleaningFeePerHouse)
+class CleaningFeePerHouseAdmin(admin.ModelAdmin):
+    list_display = ('house', 'amount')

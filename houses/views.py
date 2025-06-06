@@ -1992,21 +1992,55 @@ def get_discounted_price_for_day(request):
 
 
 from django.shortcuts import render, redirect
-from .models import CleaningFeeSetting
-from .forms import CleaningFeeForm
-
-
-
+from .models import CleaningFeeSetting, House, CleaningFeePerHouse
+from .forms import CleaningFeeForm, HouseCleaningFeeForm
+from django.forms import modelformset_factory
+from django.forms import modelformset_factory
+from .models import CleaningFeeSetting, CleaningFeePerHouse, House
+from .forms import CleaningFeeForm, HouseCleaningFeeForm
 def edit_cleaning_fee(request):
     setting, _ = CleaningFeeSetting.objects.get_or_create(id=1)
-    
+    global_form = CleaningFeeForm(instance=setting)
+
+    # Creează obiect CleaningFeePerHouse pentru fiecare casă dacă nu există deja
+    for house in House.objects.all():
+        CleaningFeePerHouse.objects.get_or_create(house=house, defaults={'amount': 0})
+
+    HouseFeeFormSet = modelformset_factory(CleaningFeePerHouse, form=HouseCleaningFeeForm, extra=0)
+
+    success = False
+
     if request.method == 'POST':
-        form = CleaningFeeForm(request.POST, instance=setting)
-        if form.is_valid():
-            form.save()
-            # după salvare afișăm modalul de succes
-            return render(request, 'houses/edit_cleaning_fee.html', {'form': form, 'success': True})
+        if 'global' in request.POST:
+            global_form = CleaningFeeForm(request.POST, instance=setting)
+            if global_form.is_valid():
+                global_form.save()
+                success = True
+            else:
+                print("Global form errors:", global_form.errors)
+
+        elif 'per_house' in request.POST:
+            house_forms = HouseFeeFormSet(request.POST, queryset=CleaningFeePerHouse.objects.all())
+            if house_forms.is_valid():
+                for form in house_forms:
+                    instance = form.save(commit=False)
+                    if instance.amount == 0:
+                        # Dacă valoarea este 0, șterge obiectul => folosește taxa globală
+                        instance.delete()
+                        print(f"🗑️ Taxă personalizată eliminată pentru {instance.house.name}, se va folosi taxa globală.")
+                    else:
+                        instance.save()
+                success = True
+            else:
+                print("House formset errors:", house_forms.errors)
+                print("Non-form errors:", house_forms.non_form_errors())
     else:
-        form = CleaningFeeForm(instance=setting)
-        
-    return render(request, 'houses/edit_cleaning_fee.html', {'form': form})
+        house_forms = HouseFeeFormSet(queryset=CleaningFeePerHouse.objects.all())
+
+    context = {
+        'global_form': global_form,
+        'house_forms': house_forms,
+        'success': success
+    }
+    return render(request, 'houses/edit_cleaning_fee.html', context)
+

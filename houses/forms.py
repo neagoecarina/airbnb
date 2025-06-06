@@ -19,11 +19,18 @@ class BookingForm(forms.ModelForm):
             'start_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'end_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
         }
-
 from django import forms
-from .models import CleaningFeeSetting
+from .models import CleaningFeeSetting, CleaningFeePerHouse, House
 
 class CleaningFeeForm(forms.ModelForm):
     class Meta:
         model = CleaningFeeSetting
-        fields = ['amount']
+        fields = ['amount']  # corect, câmpul din model este amount
+
+class HouseCleaningFeeForm(forms.ModelForm):
+    class Meta:
+        model = CleaningFeePerHouse  # schimbă modelul aici
+        fields = ['amount']  # câmpul de cleaning fee per house este amount
+        widgets = {
+            'amount': forms.NumberInput(attrs={'step': '0.01', 'class': 'form-control'}),
+        }

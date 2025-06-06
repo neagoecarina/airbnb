@@ -13,7 +13,8 @@ def dynamic_banner(request):
         'expense_overview': ("Expense Overview", "See where your money goes"),
         'house_compare': ("House Analytics", "Compare house performance across the board"),
         'utility_expenses': ("Utility Expenses", "Track monthly electricity and water costs"),
-        'houses_list': ("Make a Booking", "Create a new reservation for your property"),  # asta e URL-ul pentru /houses/
+        'houses_list': ("Make a Booking", "Create a new reservation for your property"),  
+        'edit_cleaning_fee': ("Cleaning Fee", "Set and manage cleaning fees for all properties"),
     }
 
     title, subtitle = titles.get(route_name, ("Welcome to Airbnb Manager", ""))

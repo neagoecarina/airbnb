@@ -2,20 +2,59 @@
 
 {% block content %}
 <div class="container mt-5">
-  <div class="card shadow-sm p-4">
+
+  <!-- Global Cleaning Fee -->
+  <div class="card shadow-sm p-4 mb-5">
     <h2 class="mb-4">Edit Global Cleaning Fee</h2>
-    <p class="mb-4 text-muted fst-italic" style="font-size: 0.9rem;">
-      This fee applies to all bookings and will be applied to future bookings.
+    <p class="mb-3 text-muted fst-italic" style="font-size: 0.9rem;">
+      This fee applies to all bookings if no specific fee is set for a house.
     </p>
     <form method="POST" novalidate>
       {% csrf_token %}
-      {{ form.as_p }}
-      <button class="btn btn-primary" type="submit">Save</button>
+      {{ global_form.as_p }}
+      <button class="btn btn-primary" type="submit" name="global">Save Global Fee</button>
+    </form>
+  </div>
+
+  <!-- Per-House Cleaning Fees -->
+  <div class="card shadow-sm p-4">
+    <h2 class="mb-4">Per-House Cleaning Fees</h2>
+    <p class="mb-3 text-muted fst-italic" style="font-size: 0.9rem;">
+      You can override the global fee by setting specific fees for individual houses.
+    </p>
+    <form method="POST" novalidate>
+      {% csrf_token %}
+      {{ house_forms.management_form }}
+      <div class="table-responsive">
+        <table class="table table-bordered align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>House Name</th>
+              <th>Custom Cleaning Fee (leave empty or 0 to use global)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for form in house_forms %}
+              <tr>
+                <td>{{ form.instance.house.name }}</td>
+                <td>
+                  {{ form.id }}  {# Hidden field to track instance ID #}
+                  <label for="{{ form.amount.id_for_label }}" class="form-label">
+                    {{ form.amount.label }}
+                  </label>
+                  {{ form.amount }}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <button class="btn btn-success mt-3" type="submit" name="per_house">Save Per-House Fees</button>
     </form>
   </div>
 </div>
 
-<!-- Modal succes -->
+<!-- Modal success -->
 <div class="modal fade" id="successModal" tabindex="-1" role="dialog" aria-labelledby="successModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content border-success">

@@ -13,16 +13,43 @@ from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 # houses/models.py
 
 
-
+from decimal import Decimal
+from django.db import models
 class House(models.Model):
     name = models.CharField(max_length=255)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     address = models.CharField(max_length=255)
-    photo = models.ImageField(upload_to='house_photos/', blank=True, null=True)  # Add this line
-
+    photo = models.ImageField(upload_to='house_photos/', blank=True, null=True)
 
     def __str__(self):
         return self.name
+class CleaningFeeSetting(models.Model):
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('50.00'))
+
+    def __str__(self):
+        return f"Global Cleaning Fee: {self.amount} USD"
+
+    @staticmethod
+    def get_current_fee():
+        setting, _ = CleaningFeeSetting.objects.get_or_create(id=1)
+        return setting.amount
+
+
+class CleaningFeePerHouse(models.Model):
+    house = models.OneToOneField('House', on_delete=models.CASCADE, related_name='cleaning_fee')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"Cleaning Fee for {self.house.name}: {self.amount} USD"
+
+    @staticmethod
+    def get_fee_for_house(house):
+        try:
+            return house.cleaning_fee.amount
+        except CleaningFeePerHouse.DoesNotExist:
+            return CleaningFeeSetting.get_current_fee()
+
+
 
 
 class Booking(models.Model):
@@ -43,6 +70,10 @@ class Booking(models.Model):
         try:
             with transaction.atomic():
                 print("🔵 Starting save operation.")
+
+                # Set cleaning_fee for this booking from per-house or global
+                self.cleaning_fee = CleaningFeePerHouse.get_fee_for_house(self.house)
+                print(f"✅ Cleaning fee for booking set to: {self.cleaning_fee}")
 
                 # Ensure price_per_night is a Decimal before calculation
                 price_per_night = Decimal(self.house.price)
@@ -94,11 +125,20 @@ class Booking(models.Model):
 
                 # Create the Cleaning Fee Expense for the booking (Only once!)
                 if not BookingExpense.objects.filter(booking=self).exists():
+                    print(f"🟡 Creating cleaning fee expense... cleaning_fee type: {type(self.cleaning_fee)}, value: {self.cleaning_fee}")
+    
+                    if self.cleaning_fee is None:
+                        raise Exception("❌ Cleaning fee is None before creating BookingExpense.")
+                    try:
+                        fee_amount = Decimal(self.cleaning_fee)
+                    except Exception as e:
+                        raise Exception(f"❌ Failed to convert cleaning_fee to Decimal: {e}")
+                
                     booking_expense = BookingExpense.objects.create(
                         booking=self,
                         expense_type="Cleaning Fee",
-                        #amount=self.cleaning_fee,
-                        amount=CleaningFeeSetting.get_current_fee(),
+                        amount=self.cleaning_fee,
+                        #amount=CleaningFeeSetting.get_current_fee(),
                         date=self.start_date  # Pass full date here
                     )
                     print(f"✅ Cleaning fee expense created: {booking_expense.amount}")
@@ -341,13 +381,3 @@ class Discount(models.Model):
             check_date = timezone.now().date()
         return self.start_date <= check_date <= self.end_date
 
-class CleaningFeeSetting(models.Model):
-    amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('50.00'))
-
-    def __str__(self):
-        return f"Cleaning Fee: {self.amount} RON"
-
-    @staticmethod
-    def get_current_fee():
-        setting, _ = CleaningFeeSetting.objects.get_or_create(id=1)
-        return setting.amount
