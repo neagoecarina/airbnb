@@ -42,10 +42,15 @@ class CleaningFeePerHouse(models.Model):
     def __str__(self):
         return f"Cleaning Fee for {self.house.name}: {self.amount} USD"
 
+
     @staticmethod
     def get_fee_for_house(house):
         try:
-            return house.cleaning_fee.amount
+            amount = house.cleaning_fee.amount
+            if amount > 0:
+                return amount
+            else:
+                return CleaningFeeSetting.get_current_fee()
         except CleaningFeePerHouse.DoesNotExist:
             return CleaningFeeSetting.get_current_fee()
 
