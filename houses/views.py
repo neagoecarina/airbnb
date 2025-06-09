@@ -978,7 +978,7 @@ def generate_pdf_report(request):
         # Add to total earnings across all houses
         total_earnings_per_house += house_earnings_excl_vat
 
-    # Calculate the average earnings per house
+    
     # Calculate the average earnings per house
     avg_earnings_per_house = round(total_earnings_per_house / len(houses), 2) if len(houses) > 0 else 0.00
 

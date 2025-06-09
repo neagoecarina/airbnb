@@ -68,30 +68,30 @@
     <div class="summary">
         <div>
             <h5>Total Earnings</h5>
-            <p>${{ total_earnings }}</p>
+            <p>${{ total_earnings|floatformat:2 }}</p>
         </div>
         <div>
             <h5>Total Expenses</h5>
-            <p>${{ total_expenses }}</p>
+            <p>${{ total_expenses|floatformat:2 }}</p>
         </div>
         <div>
             <h5>Total Net Earnings</h5>
-            <p>${{ total_net_earnings }}</p>
+            <p>${{ total_net_earnings|floatformat:2 }}</p>
         </div>
     </div>
 
     <div class="summary">
         <div>
             <h5>Average Earnings per House</h5>
-            <p>${{ avg_earnings_per_house }}</p>
+            <p>${{ avg_earnings_per_house|floatformat:2 }}</p>
         </div>
         <div>
             <h5>Total VAT Collected</h5>
-            <p>${{ total_vat_collected }}</p>
+            <p>${{ total_vat_collected|floatformat:2 }}</p>
         </div>
         <div>
             <h5>Total VAT Deductible</h5>
-            <p>${{ total_vat_deductible }}</p>
+            <p>${{ total_vat_deductible|floatformat:2 }}</p>
         </div>
     </div>
 
@@ -108,18 +108,18 @@
         <tbody>
             <tr>
                 <td>Utility Expenses</td>
-                <td>${{ total_utility_expenses }}</td>
-                <td>${{ total_utility_expenses|multiply:0.19 }}</td>
+                <td>${{ total_utility_expenses|floatformat:2 }}</td>
+                <td>${{ total_utility_expenses|multiply:0.19|floatformat:2 }}</td>
             </tr>
             <tr>
                 <td>Booking Expenses (Cleaning Fees)</td>
-                <td>${{ total_booking_expenses }}</td>
-                <td>${{ total_booking_expenses|multiply:0.19 }}</td>
+                <td>${{ total_booking_expenses|floatformat:2 }}</td>
+                <td>${{ total_booking_expenses|multiply:0.19|floatformat:2 }}</td>
             </tr>
             <tr>
                 <td><strong>Total Expenses</strong></td>
-                <td><strong>${{ total_net_expenses }}</strong></td>
-                <td><strong>${{ total_net_expenses|multiply:0.19 }}</strong></td>
+                <td><strong>${{ total_net_expenses|floatformat:2 }}</strong></td>
+                <td><strong>${{ total_net_expenses|multiply:0.19|floatformat:2 }}</strong></td>
             </tr>
         </tbody>
     </table>
@@ -138,8 +138,8 @@
             {% for house in house_earnings_data %}
             <tr>
                 <td>{{ house.house_name }}</td>
-                <td>${{ house.total_earnings_excl_vat }}</td>
-                <td>${{ house.total_earnings_incl_vat }}</td>
+                <td>${{ house.total_earnings_excl_vat|floatformat:2 }}</td>
+                <td>${{ house.total_earnings_incl_vat|floatformat:2 }}</td>
             </tr>
             {% endfor %}
         </tbody>
