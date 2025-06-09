@@ -50,12 +50,12 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="water">Water (€):</label>
+                    <label for="water">Water ($):</label>
                     <input type="text" class="form-control" name="water" id="water" placeholder="Enter water amount" >
                 </div>
 
                 <div class="form-group">
-                    <label for="electricity">Electricity (€):</label>
+                    <label for="electricity">Electricity ($):</label>
                     <input type="text" class="form-control" name="electricity" id="electricity" placeholder="Enter electricity amount" >
                 </div>
 
@@ -103,12 +103,12 @@
     
                 // Only show the modal for water if the existing water expense is > 0 and the user wants to update it
                 if (data.existing_water && parseFloat(data.existing_water) > 0 && formData.get('water')) {
-                    message += `Water expense is already €${data.existing_water}. Do you wish to update it? `;
+                    message += `Water expense is already $${data.existing_water}. Do you wish to update it? `;
                 }
     
                 // Only show the modal for electricity if the existing electricity expense is > 0 and the user wants to update it
                 if (data.existing_electricity && parseFloat(data.existing_electricity) > 0 && formData.get('electricity')) {
-                    message += `Electricity expense is already €${data.existing_electricity}. Do you wish to update it? `;
+                    message += `Electricity expense is already $${data.existing_electricity}. Do you wish to update it? `;
                 }
     
                 // Show the modal if there is any message
