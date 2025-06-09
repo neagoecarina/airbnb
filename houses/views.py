@@ -1071,79 +1071,104 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from datetime import datetime
 
+from django.shortcuts import get_object_or_404
+from django.http import HttpResponse
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+from decimal import Decimal
+from datetime import datetime
+from .models import Booking
+
 def generate_invoice(request, booking_id):
-    # Fetch the booking based on the provided booking ID
     booking = get_object_or_404(Booking, id=booking_id)
     
-    # Get the booking price (excluding VAT)
+    # Prices
     price_excl_vat = booking.booking_earnings
-
-    # VAT rate (19%)
     vat_rate = Decimal('0.19')
+    vat_amount = price_excl_vat * vat_rate
+    price_incl_vat = price_excl_vat + vat_amount
 
-    # Calculate price including VAT
-    price_incl_vat = price_excl_vat * (Decimal('1') + vat_rate)
-
-    # Calculate the number of nights (including the start day)
+    # Booking Duration
     total_days = (booking.end_date - booking.start_date).days + 1
-    
-    # Create the PDF response
+
+    # Prepare PDF response
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="invoice_{booking.id}.pdf"'
 
-    # Create the PDF using ReportLab
+    # Start PDF
     p = canvas.Canvas(response, pagesize=letter)
-    
-    # Set up basic font styles
-    p.setFont("Helvetica-Bold", 14)
-    
-    # Add Company Info (Header)
-    p.drawString(100, 750, "Your Company Name")
+    width, height = letter
+
+    # Company Header
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(50, 770, "Blue Horizon Rentals")
     p.setFont("Helvetica", 10)
-    p.drawString(100, 735, "Your Address Line 1")
-    p.drawString(100, 720, "Your Address Line 2")
-    p.drawString(100, 705, "City, Postal Code")
-    p.drawString(100, 690, "Email: your@email.com | Phone: +123456789")
-    
-    # Add a horizontal line to separate header from the rest of the content
+    p.drawString(50, 755, "123 Seaside Avenue")
+    p.drawString(50, 740, "Barcelona, Spain 08001")
+    p.drawString(50, 725, "Email: contact@bluehorizonrentals.com")
+    p.drawString(50, 710, "Phone: +34 612 345 678")
+
+    # Horizontal Line
     p.setStrokeColor(colors.black)
     p.setLineWidth(1)
-    p.line(100, 680, 500, 680)
+    p.line(50, 700, 550, 700)
 
-    # Add Invoice Title
-    p.setFont("Helvetica-Bold", 16)
-    p.drawString(100, 660, "Invoice")
-
-    # Add Invoice Number and Date
+    # Invoice Title and Metadata
+    p.setFont("Helvetica-Bold", 14)
+    p.drawString(50, 680, "INVOICE")
     p.setFont("Helvetica", 10)
-    p.drawString(400, 660, f"Invoice Number: {booking.id}")
-    p.drawString(400, 645, f"Invoice Date: {datetime.now().strftime('%Y-%m-%d')}")
+    p.drawString(400, 680, f"Invoice #: {booking.id}")
+    p.drawString(400, 665, f"Invoice Date: {datetime.now().strftime('%Y-%m-%d')}")
 
-    # Add Booking Details
-    p.setFont("Helvetica", 12)
-    p.drawString(100, 620, f"Booking ID: {booking.id}")
-    p.drawString(100, 600, f"Customer Name: {booking.customer_name}")
-    p.drawString(100, 580, f"Start Date: {booking.start_date}")
-    p.drawString(100, 560, f"End Date: {booking.end_date}")
-    
-    # Add Description of Service with Number of Nights
-    p.drawString(100, 540, f"Description: Accommodation at {booking.house.name} for {total_days} nights ({booking.start_date} to {booking.end_date})")
-
-    # Add Price with VAT
+    # Customer Info
     p.setFont("Helvetica-Bold", 12)
-    p.drawString(100, 510, f"Price (Including VAT):")
-    p.setFont("Helvetica", 12)
-    p.drawString(250, 510, f"{price_incl_vat:.2f}")
-
-    # Add a footer with a thank you note or website (Optional)
+    p.drawString(50, 640, "Bill To:")
     p.setFont("Helvetica", 10)
-    p.drawString(100, 100, "Thank you for your business! Visit our website at www.yourcompany.com")
+    p.drawString(50, 625, f"{booking.customer_name}")
+    p.drawString(50, 610, f"Accommodation at: {booking.house.name}")
 
-    # Finalize the PDF
+    # Booking Details
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(50, 580, "Booking Details:")
+    p.setFont("Helvetica", 10)
+    p.drawString(50, 565, f"Check-in: {booking.start_date}")
+    p.drawString(200, 565, f"Check-out: {booking.end_date}")
+    p.drawString(350, 565, f"Nights: {total_days}")
+
+    # Service Description Table Header
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(50, 540, "Description")
+    p.drawString(300, 540, "Unit Price")
+    p.drawString(400, 540, "VAT (19%)")
+    p.drawString(500, 540, "Total")
+
+    # Service Row
+    p.setFont("Helvetica", 10)
+    p.drawString(50, 525, f"Stay at {booking.house.name} ({total_days} nights)")
+    p.drawString(300, 525, f"${price_excl_vat:.2f}")
+    p.drawString(400, 525, f"${vat_amount:.2f}")
+    p.drawString(500, 525, f"${price_incl_vat:.2f}")
+
+    # Total Summary
+    p.setFont("Helvetica-Bold", 11)
+    p.drawString(400, 490, "Total (Excl. VAT):")
+    p.drawString(500, 490, f"${price_excl_vat:.2f}")
+    p.drawString(400, 475, "VAT (19%):")
+    p.drawString(500, 475, f"${vat_amount:.2f}")
+    p.drawString(400, 460, "Total (Incl. VAT):")
+    p.drawString(500, 460, f"${price_incl_vat:.2f}")
+
+    # Footer
+    p.setFont("Helvetica-Oblique", 9)
+    p.drawString(50, 100, "Thank you for choosing Blue Horizon Rentals!")
+    p.drawString(50, 85, "Visit us at www.bluehorizonrentals.com")
+
     p.showPage()
     p.save()
 
     return response
+
 from django.shortcuts import render
 from datetime import datetime, timedelta
 from django.db.models import Sum, Count, Avg, F
