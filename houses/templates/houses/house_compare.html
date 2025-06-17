@@ -83,9 +83,9 @@ function updateFilters() {
         <thead>
             <tr>
                 <th>House Name</th>
-                <th>Monthly Earnings (€)</th>
-                <th>Monthly Expenses (€)</th>
-                <th>Monthly Profit (€)</th>
+                <th>Monthly Earnings ($)</th>
+                <th>Monthly Expenses ($)</th>
+                <th>Monthly Profit ($)</th>
             </tr>
         </thead>
         <tbody>
@@ -191,9 +191,9 @@ function updateFilters() {
   }
   
   // Create all charts
-  createChart('profitChart', 'bar', houseNames, houseProfits, profitColors, 'Monthly Profit (€)');
+  createChart('profitChart', 'bar', houseNames, houseProfits, profitColors, 'Monthly Profit ($)');
   createChart('occupancyChart', 'bar', houseNames, houseOccupancy, 'rgba(54, 162, 235, 0.6)', 'Occupancy Rate (%)');
-  createChart('adrChart', 'bar', houseNames, houseADR, 'rgba(255, 159, 64, 0.6)', 'Average Daily Rate (€)');
+  createChart('adrChart', 'bar', houseNames, houseADR, 'rgba(255, 159, 64, 0.6)', 'Average Daily Rate ($)');
   createChart('bookingChart', 'line',
     ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
     bookingTrends,

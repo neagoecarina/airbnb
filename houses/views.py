@@ -13,9 +13,6 @@ from .models import House
 from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate, login as auth_login
 from .forms import BookingForm
-#def landing_page(request):
-    #return render(request, 'landing.html')  # This will load landing.html
-
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import House
 
