@@ -1049,14 +1049,18 @@ def delete_booking(request, booking_id):
         return redirect('booking_list')
     return render(request, 'houses/delete_booking.html', {'booking': booking})
 
+from django.db.models import F
+
 def add_note(request, booking_id):
     booking = get_object_or_404(Booking, id=booking_id)
+
     if request.method == 'POST':
         note = request.POST.get('note')
-        booking.note = note
-        booking.save()
+        Booking.objects.filter(pk=booking.id).update(note=note)
         return redirect('booking_list')
+
     return render(request, 'houses/add_note.html', {'booking': booking})
+
 
 
 from django.http import HttpResponse
