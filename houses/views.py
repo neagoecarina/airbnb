@@ -1219,19 +1219,7 @@ def landing_page(request):
     # Upcoming bookings
     upcoming_bookings = Booking.objects.filter(start_date__gte=datetime.now()).order_by("start_date")
 
-    # Occupancy Rate Calculation
-    #total_nights_in_month = (end_date - start_date).days + 1
-    #total_houses = House.objects.count()
 
-    #booked_nights = Booking.objects.filter(
-        #start_date__lte=end_date,
-        #end_date__gte=start_date
-    #).annotate(nights=ExpressionWrapper(F('end_date') - F('start_date') + 1, output_field=IntegerField())) \
-    #.aggregate(total_booked_nights=Sum('nights'))['total_booked_nights'] or 0
-
-    #occupancy_rate = (booked_nights / (total_nights_in_month * total_houses) * 100) if total_houses > 0 else 0
-    #occupancy_rate = round(occupancy_rate, 2)  # Now it works correctly!
-    # Bookings overlapping with current month
     bookings_in_month = Booking.objects.filter(
         start_date__lte=end_date,
         end_date__gte=start_date
@@ -1266,10 +1254,7 @@ def landing_page(request):
     most_booked_property_name = most_booked_property['house__name'] if most_booked_property else "N/A"
 
 
-    # Average Booking Duration
-    #avg_booking_duration = Booking.objects.annotate(nights=(F('end_date') - F('start_date') + timedelta(days=1))) \
-    #.aggregate(Avg('nights'))['nights__avg'] or 0
-    # Average Booking Duration for the current month
+
     avg_booking_duration = Booking.objects.filter(
         start_date__gte=start_date,
         start_date__lte=end_date
@@ -1314,7 +1299,7 @@ def landing_page(request):
 
     return render(request, 'landing.html', context)
 
-# views.py
+
 
 from datetime import datetime
 import calendar
