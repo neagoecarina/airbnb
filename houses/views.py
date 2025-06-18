@@ -1027,18 +1027,30 @@ def booking_list(request):
     
     return render(request, 'houses/booking_list.html', {'bookings': bookings})
 
+from django.shortcuts import get_object_or_404, redirect, render
+from django.core.exceptions import PermissionDenied
+from .models import Booking
+from .forms import BookingCustomerNameForm
+
 def edit_booking(request, booking_id):
     if not request.user.is_staff and not request.user.is_superuser:
         raise PermissionDenied("You do not have permission to edit bookings.")
+
     booking = get_object_or_404(Booking, id=booking_id)
+
     if request.method == 'POST':
-        form = BookingForm(request.POST, instance=booking)
+        form = BookingCustomerNameForm(request.POST, instance=booking)
         if form.is_valid():
-            form.save()
+            # Use update to change only customer_name without triggering Booking.save()
+            Booking.objects.filter(id=booking.id).update(customer_name=form.cleaned_data['customer_name'])
             return redirect('booking_list')
     else:
-        form = BookingForm(instance=booking)
+        form = BookingCustomerNameForm(instance=booking)
+
     return render(request, 'houses/edit_booking.html', {'form': form, 'booking': booking})
+
+
+
 
 def delete_booking(request, booking_id):
     if not request.user.is_staff and not request.user.is_superuser:

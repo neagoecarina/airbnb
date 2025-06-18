@@ -55,3 +55,40 @@ def get_discounted_price(house_id, start_date, end_date):
     return original_price
 
 
+from datetime import timedelta
+from decimal import Decimal
+
+
+def calculate_total_booking_price_with_discounts(house_id, start_date, end_date):
+    house = House.objects.get(id=house_id)
+    base_price = house.price
+    total_price = Decimal('0.00')
+
+    # Get all discounts for the house that overlap the booking period
+    discounts = Discount.objects.filter(
+        house_id=house_id,
+        start_date__lte=end_date,
+        end_date__gte=start_date
+    )
+
+    # Map each discount day to its discount percentage
+    discount_days = {}
+    for discount in discounts:
+        current = discount.start_date
+        while current <= discount.end_date:
+            if start_date <= current < end_date:
+                discount_days[current] = discount.discount_percentage
+            current += timedelta(days=1)
+
+    # Calculate total price per night
+    current = start_date
+    while current < end_date:
+        if current in discount_days:
+            discount_percent = discount_days[current]
+            daily_price = base_price * (1 - discount_percent / 100)
+        else:
+            daily_price = base_price
+        total_price += daily_price
+        current += timedelta(days=1)
+
+    return round(total_price, 2)

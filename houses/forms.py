@@ -59,3 +59,12 @@ class HouseCleaningFeeForm(forms.ModelForm):
         if amount is not None and amount < 0:
             raise forms.ValidationError("The cleaning fee cannot be negative.")
         return amount
+
+
+from django import forms
+from .models import Booking
+
+class BookingCustomerNameForm(forms.ModelForm):
+    class Meta:
+        model = Booking
+        fields = ['customer_name']  # ONLY customer_name editable
