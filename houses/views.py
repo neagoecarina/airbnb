@@ -2013,7 +2013,6 @@ def edit_cleaning_fee(request):
     setting, _ = CleaningFeeSetting.objects.get_or_create(id=1)
     global_form = CleaningFeeForm(instance=setting)
 
-    # Creează obiect CleaningFeePerHouse pentru fiecare casă dacă nu există deja
     for house in House.objects.all():
         CleaningFeePerHouse.objects.get_or_create(house=house, defaults={'amount': 0})
 
@@ -2022,6 +2021,8 @@ def edit_cleaning_fee(request):
     success = False
 
     if request.method == 'POST':
+        house_forms = HouseFeeFormSet(queryset=CleaningFeePerHouse.objects.all())  # 🛠️ fallback default
+        
         if 'global' in request.POST:
             global_form = CleaningFeeForm(request.POST, instance=setting)
             if global_form.is_valid():
@@ -2036,7 +2037,6 @@ def edit_cleaning_fee(request):
                 for form in house_forms:
                     instance = form.save(commit=False)
                     if instance.amount == 0:
-                        # Dacă valoarea este 0, șterge obiectul => folosește taxa globală
                         instance.delete()
                         print(f"🗑️ Taxă personalizată eliminată pentru {instance.house.name}, se va folosi taxa globală.")
                     else:
@@ -2054,4 +2054,3 @@ def edit_cleaning_fee(request):
         'success': success
     }
     return render(request, 'houses/edit_cleaning_fee.html', context)
-
