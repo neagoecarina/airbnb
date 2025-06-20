@@ -25,6 +25,7 @@ from django.db.models import (
     ExpressionWrapper, IntegerField, FloatField
 )
 from django.db.models.functions import Greatest, Least
+from django.db.models import DurationField
 
 # PDF and Excel generation
 from weasyprint import HTML
