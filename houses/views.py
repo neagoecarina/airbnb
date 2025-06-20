@@ -1,20 +1,53 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
-from .models import House, Booking, UtilityExpense,MonthlyEarning, YearlyEarning, HouseEarning, MonthlyExpense
-from datetime import datetime, timedelta
+# Standard library
 import json
-from django.views.decorators.csrf import csrf_exempt
-from django.contrib import messages
-import re
+import csv
+import calendar
+from datetime import datetime, timedelta, date
 from decimal import Decimal
-from django.shortcuts import render, get_object_or_404, redirect
-from django.http import HttpResponse
-from .models import House
-from django.contrib.auth import get_user_model
-from django.contrib.auth import authenticate, login as auth_login
-from .forms import BookingForm
+
+# Django core
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import House
+from django.http import JsonResponse, HttpResponse
+from django.contrib import messages
+from django.views.decorators.csrf import csrf_exempt
+from django.core.exceptions import PermissionDenied
+from django.utils import timezone
+from django.template.loader import render_to_string
+
+# Django authentication
+from django.contrib.auth import authenticate, login as auth_login, get_user_model
+from django.contrib.auth.models import User
+
+# Django forms and models
+from django.forms import modelformset_factory
+from django.db.models import (
+    Sum, Count, Avg, F, Q, Case, When,
+    ExpressionWrapper, IntegerField, FloatField
+)
+from django.db.models.functions import Greatest, Least
+
+# PDF and Excel generation
+from weasyprint import HTML
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+import openpyxl
+from openpyxl.styles import Font
+
+# Your app models and utilities
+from .models import (
+    House, Booking, UtilityExpense, MonthlyEarning, YearlyEarning,
+    HouseEarning, MonthlyExpense, Discount, CleaningFeePerHouse,
+    CleaningFeeSetting, BookingExpense
+)
+from .forms import (
+    BookingForm, CleaningFeeForm, HouseCleaningFeeForm,
+    DiscountForm, BookingCustomerNameForm
+)
+from .utils import get_discounted_price
+
+
+
 
 User = get_user_model()
 
@@ -43,18 +76,7 @@ def register(request):
 
     return render(request, 'houses/register.html')
 
-from django.contrib.auth import authenticate, login as auth_login, get_user_model
-from django.contrib import messages
-from django.shortcuts import render, redirect
 
-from django.contrib.auth.models import User
-from django.contrib import messages
-from django.contrib.auth import login as auth_login
-from django.shortcuts import render, redirect
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.contrib.auth import authenticate, login as auth_login
-from django.contrib.auth import get_user_model
 
 User = get_user_model()
 def login_view(request):
@@ -135,19 +157,7 @@ def delete_house(request, house_id):  # Use 'house_id' here as well
     return redirect('manage_houses')  # Redirect after deletion
 
 
-# View for house details
-from django.http import JsonResponse
-from django.shortcuts import render, get_object_or_404
-from django.views.decorators.csrf import csrf_exempt
-from datetime import datetime, timedelta
-from .models import House, Booking, Discount
-from .utils import get_discounted_price  # Import the discount function
 
-from django.http import JsonResponse
-from django.shortcuts import render, get_object_or_404
-from datetime import datetime, timedelta
-from .models import House, Booking
-import json
 
 @csrf_exempt  # Temporarily disable CSRF for debugging, use only during development
 def house_detail(request, house_id):
@@ -207,24 +217,8 @@ def isValidDecimal(value):
     decimalPattern = r'^\d+(\.\d{1,2})?$'  # Pattern for valid decimal (up to two decimal places)
     return bool(re.match(decimalPattern, value))
 
-from django.http import JsonResponse
-from decimal import Decimal
-from .models import UtilityExpense
 
-import datetime
-from decimal import Decimal
-from django.http import JsonResponse
-from .models import UtilityExpense, House
-from datetime import datetime  # Ensure this is at the top of the file
 
-from datetime import datetime
-from decimal import Decimal
-from django.http import JsonResponse
-from django.shortcuts import render
-
-from datetime import date  # Add this import at the top
-
-# Your other views and logic
 def add_utility_expenses(request):
     houses = House.objects.all()
     current_year = datetime.now().year  # Get the current year dynamically
@@ -363,30 +357,7 @@ def update_monthly_expense(house_id, month_date):  # Use a DateField directly
 
 
 
-from django.shortcuts import render
-from decimal import Decimal
-from .models import MonthlyEarning, YearlyEarning, MonthlyExpense
-import json
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 
-
-from django.shortcuts import render
-from django.db.models import Sum
-from .models import MonthlyEarning, House, MonthlyExpense, UtilityExpense, HouseEarning, BookingExpense
-from django.utils import timezone
-
-
-
-from datetime import datetime, timedelta
-from decimal import Decimal
-from django.db.models import Sum
-from django.shortcuts import render
-
-from datetime import datetime, timedelta
-from decimal import Decimal
-from django.db.models import Sum
-from django.shortcuts import render
 
 def financial_overview(request):
     # Get the selected time period from the URL or default to "monthly"
@@ -618,13 +589,7 @@ def calculate_taxes(request):
         # Return the JSON response with calculated taxes
         return JsonResponse(response_data)
 
-import csv
-from datetime import datetime, timedelta
-from decimal import Decimal
-from django.shortcuts import render
-from django.http import HttpResponse
-from django.db.models import Sum
-from .models import MonthlyEarning, MonthlyExpense, UtilityExpense, BookingExpense, House, HouseEarning
+
 
 def export_to_csv(request):
     time_period = request.GET.get('time_period', 'monthly')
@@ -711,13 +676,6 @@ def export_to_csv(request):
     return response
 
 
-import openpyxl
-from openpyxl.styles import Font
-from django.http import HttpResponse
-from datetime import datetime, timedelta
-from decimal import Decimal
-from django.db.models import Sum
-from .models import MonthlyExpense, MonthlyEarning, UtilityExpense, BookingExpense, House, HouseEarning
 
 def export_to_excel(request):
     # Get the selected time period from the request
@@ -873,14 +831,7 @@ def export_to_excel(request):
     return response
 
 
-# Generate PDF Report
-from django.shortcuts import render
-from django.template.loader import render_to_string
-from django.http import HttpResponse
-from weasyprint import HTML
-from datetime import datetime, timedelta
-from decimal import Decimal
-from .models import MonthlyExpense, MonthlyEarning, UtilityExpense, BookingExpense, House, HouseEarning
+
 
 def generate_pdf_report(request):
     # Get the selected time period from the URL or default to "monthly"
@@ -1016,21 +967,14 @@ def generate_pdf_report(request):
 
     return response
 
-from django.shortcuts import render, get_object_or_404
-from django.utils import timezone
-from .models import Booking
-from decimal import Decimal
-from django.core.exceptions import PermissionDenied
+
 
 def booking_list(request):
     bookings = Booking.objects.all()  # Fetch all bookings
     
     return render(request, 'houses/booking_list.html', {'bookings': bookings})
 
-from django.shortcuts import get_object_or_404, redirect, render
-from django.core.exceptions import PermissionDenied
-from .models import Booking
-from .forms import BookingCustomerNameForm
+
 
 def edit_booking(request, booking_id):
     if not request.user.is_staff and not request.user.is_superuser:
@@ -1075,23 +1019,7 @@ def add_note(request, booking_id):
 
 
 
-from django.http import HttpResponse
-from django.shortcuts import get_object_or_404
-from .models import Booking
-from decimal import Decimal
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
-from reportlab.lib import colors
-from datetime import datetime
 
-from django.shortcuts import get_object_or_404
-from django.http import HttpResponse
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from reportlab.lib import colors
-from decimal import Decimal
-from datetime import datetime
-from .models import Booking
 
 def generate_invoice(request, booking_id):
     booking = get_object_or_404(Booking, id=booking_id)
@@ -1182,15 +1110,7 @@ def generate_invoice(request, booking_id):
 
     return response
 
-from django.shortcuts import render
-from datetime import datetime, timedelta
-from django.db.models import Sum, Count, Avg, F
-from .models import MonthlyEarning, HouseEarning, Booking, UtilityExpense, BookingExpense, House
-from django.utils import timezone
-from django.db.models import ExpressionWrapper, IntegerField
-from decimal import Decimal
-from django.db.models import Case, When, DateField
-from django.db.models.functions import Greatest, Least
+
 
 
 def landing_page(request):
@@ -1316,22 +1236,6 @@ def landing_page(request):
     return render(request, 'landing.html', context)
 
 
-
-from datetime import datetime
-import calendar
-from decimal import Decimal
-from django.shortcuts import render
-from .models import House, BookingExpense, UtilityExpense
-from django.db.models import Sum
-
-from django.db.models import Sum
-from decimal import Decimal
-from django.db.models import Sum
-from decimal import Decimal
-from django.db.models import Sum
-from decimal import Decimal
-import calendar
-from datetime import datetime
 
 def expense_overview(request):
     # Get the current date
@@ -1461,12 +1365,7 @@ def expense_overview(request):
     return render(request, 'houses/expense_overview.html', context)
 
 
-from datetime import datetime, timedelta
-from django.shortcuts import render
-from django.db.models import Sum, Count, F, ExpressionWrapper, FloatField, Q
-from decimal import Decimal
-import calendar
-from .models import House, Booking, MonthlyExpense
+
 
 def calculate_profit(house_id=None, month=None, year=None):
     filters = {}
@@ -1537,7 +1436,7 @@ def calculate_occupancy_rate(house_id, month, year):
 
 
 
-from django.db.models import F, ExpressionWrapper, DurationField
+
 
 def calculate_adr(house_id, month, year):
     if not house_id:
@@ -1600,9 +1499,6 @@ def calculate_booking_trends(house_id, year):
     return [trends[i] for i in range(1, 13)]
 
 
-from datetime import datetime, timedelta
-from django.db.models import Count, F
-import calendar
 
 # Add the necessary calculations in the view
 def calculate_longest_booking(house_id, month, year):
@@ -1699,12 +1595,6 @@ def calculate_most_common_booking_days(house_id, month, year):
     return calendar.day_name[most_common_day]
 
 
-from datetime import datetime
-import calendar
-from .models import House  # Adjust the import as per your project structure
-from datetime import datetime
-from .models import Booking, House
-import calendar
 
 def house_compare(request):
     current_date = datetime.now()
@@ -1814,16 +1704,6 @@ def house_compare(request):
 
 
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib import messages
-from django.http import JsonResponse
-from .models import House, Discount
-from .forms import DiscountForm  
-from django.shortcuts import render, redirect
-from .models import House, Discount
-from .forms import DiscountForm  # Ensure this form is correctly defined
-
-from django.contrib import messages
 
 def set_discount(request):
     if request.method == 'POST':
@@ -1878,9 +1758,6 @@ def edit_discount(request, discount_id):
 
     return render(request, 'houses/edit_discount.html', {'form': form, 'discount': discount})
 
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
-from .models import Discount
 
 def delete_discount(request, discount_id):
     """Delete a discount using AJAX."""
@@ -1891,17 +1768,6 @@ def delete_discount(request, discount_id):
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 
-# views.py
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
-from datetime import datetime
-from django.utils import timezone
-from .models import House, Discount
-
-from datetime import datetime, timedelta
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
-from .models import House, Discount
 
 def get_discounted_price(request):
     house_id = request.GET.get('house_id')
@@ -1970,12 +1836,6 @@ def get_discounted_price(request):
 
 
 
-from django.http import JsonResponse
-from .models import House, Discount
-from django.http import JsonResponse
-from .models import House, Discount
-from datetime import datetime
-
 def get_discounted_price_for_day(request):
     house_id = request.GET.get('house_id')
     date_str = request.GET.get('date')  # Expecting date in 'YYYY-MM-DD' format
@@ -2014,13 +1874,7 @@ def get_discounted_price_for_day(request):
     return JsonResponse({'discounted_price': round(discounted_price, 2)})  # Return rounded to 2 decimal places
 
 
-from django.shortcuts import render, redirect
-from .models import CleaningFeeSetting, House, CleaningFeePerHouse
-from .forms import CleaningFeeForm, HouseCleaningFeeForm
-from django.forms import modelformset_factory
-from django.forms import modelformset_factory
-from .models import CleaningFeeSetting, CleaningFeePerHouse, House
-from .forms import CleaningFeeForm, HouseCleaningFeeForm
+
 def edit_cleaning_fee(request):
     setting, _ = CleaningFeeSetting.objects.get_or_create(id=1)
     global_form = CleaningFeeForm(instance=setting)

@@ -1,20 +1,16 @@
-from django.db import models
-from django.utils import timezone
+# Standard library
 from datetime import datetime, date, timedelta
-from decimal import Decimal
-from django.db import models,transaction
-from django.db.models import Sum
-from django.contrib.auth.models import User
-
-from .utils import get_discounted_price  # Import your discount function
-
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 
-# houses/models.py
+# Django
+from django.db import models, transaction
+from django.db.models import Sum
+from django.utils import timezone
+from django.contrib.auth.models import User
 
+# Local app imports
+from .utils import get_discounted_price  # Import your discount function
 
-from decimal import Decimal
-from django.db import models
 class House(models.Model):
     name = models.CharField(max_length=255)
     price = models.DecimalField(max_digits=10, decimal_places=2)
