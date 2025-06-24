@@ -45,7 +45,7 @@
 
 1. **Clonează repo-ul:**
 ```bash
-git clone https://github.com/neagoecarina/airbnb_manager.git
+git clone https://github.com/neagoecarina/airbnb.git
 cd airbnb_manager
 python -m venv venv
 source venv/bin/activate     # Linux / Mac
